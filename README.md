@@ -5,7 +5,8 @@
 ## 功能特性
 
 - 🎭 多种陪伴角色（男友、女友、好友、导师等）
-- 💬 情感陪伴聊天
+- 💬 情感陪伴聊天（MiMo AI 驱动）
+- 😊 情绪表情包自动匹配
 - 🎤 语音对话
 - 🔊 声音克隆与设计
 - 💾 个性化记忆
@@ -20,16 +21,26 @@
 - Zustand (状态管理)
 - Framer Motion (动画)
 - Lucide React (图标)
+- MiMo AI API (对话、TTS、声音克隆)
 
 ## 快速开始
 
-### 安装依赖
+### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-### 启动开发服务器
+### 2. 配置环境变量
+
+创建 `.env` 文件：
+
+```env
+VITE_MIMO_BASE_URL=https://api.xiaomimimo.com/anthropic
+VITE_MIMO_AUTH_TOKEN=你的MiMo API Key
+```
+
+### 3. 启动开发服务器
 
 ```bash
 npm run dev
@@ -37,7 +48,7 @@ npm run dev
 
 访问 http://localhost:3000
 
-### 构建生产版本
+### 4. 构建生产版本
 
 ```bash
 npm run build
@@ -52,7 +63,8 @@ src/
 │   └── Sidebar.tsx
 ├── hooks/          # 自定义 Hooks
 │   ├── useAudio.ts
-│   └── useRecorder.ts
+│   ├── useRecorder.ts
+│   └── useSticker.ts    # 表情包搜索
 ├── pages/          # 页面
 │   ├── WelcomePage.tsx
 │   ├── SetupPage.tsx
@@ -64,22 +76,31 @@ src/
 ├── types/          # TypeScript 类型
 │   └── index.ts
 ├── utils/          # 工具函数
-│   └── api.ts
+│   ├── api.ts
+│   └── mimo.ts     # MiMo API 客户端
 ├── App.tsx
 ├── main.tsx
 └── index.css
 ```
 
-## 后端 API
+## API 接口
 
-前端通过 `/api` 路径与后端通信，需要后端提供以下接口：
+### MiMo AI API
 
-- POST `/api/chat/send` - 发送消息
-- POST `/api/tts/synthesize` - 语音合成
-- POST `/api/voice/clone` - 声音克隆
-- POST `/api/voice/design` - 声音设计
-- GET `/api/tts/voices` - 获取声音列表
-- POST `/api/emotion/detect` - 情感检测
+通过 Vite 代理调用，避免 CORS 问题：
+
+| 功能 | 代理路径 | 模型 |
+|------|----------|------|
+| 对话 | `/mimo/v1/messages` | mimo-v2.5-pro |
+| 语音合成 | `/mimo/audio/speech` | MiMo-V2.5-TTS |
+| 声音克隆 | `/mimo/audio/voices/clone` | MiMo-V2.5-TTS-VoiceClone |
+| 声音设计 | `/mimo/audio/voices/design` | MiMo-V2.5-TTS-VoiceDesign |
+
+### 表情包 API
+
+| 功能 | 代理路径 | 说明 |
+|------|----------|------|
+| 搜索表情包 | `/sticker/a/biaoq.php` | 根据关键词搜索，返回 JSON 数组 |
 
 ## 使用说明
 
@@ -89,6 +110,12 @@ src/
 4. 开始聊天，享受陪伴
 
 ## 特色功能
+
+### AI 对话
+使用 MiMo-V2.5-Pro 模型，支持上下文记忆，自然流畅的对话体验
+
+### 情绪表情包
+AI 回复时自动匹配情绪关键词，搜索并展示对应的表情包
 
 ### 声音克隆
 上传音频文件，AI 会学习并克隆该声音
