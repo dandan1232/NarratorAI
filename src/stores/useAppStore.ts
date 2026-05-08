@@ -59,6 +59,7 @@ interface AppStore extends AppState, CompanionState {
   setCurrentSession: (session: ChatSession | null) => void;
   addMessage: (sessionId: string, message: Message) => void;
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
+  deleteMessage: (sessionId: string, messageId: string) => void;
 
   // Memory actions
   setMemories: (memories: Memory[]) => void;
@@ -214,6 +215,18 @@ export const useAppStore = create<AppStore>()(
                     m.id === messageId ? { ...m, ...updates } : m
                   ),
                 }
+              : state.currentSession,
+        })),
+      deleteMessage: (sessionId, messageId) =>
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId
+              ? { ...s, messages: s.messages.filter((m: Message) => m.id !== messageId) }
+              : s
+          ),
+          currentSession:
+            state.currentSession?.id === sessionId
+              ? { ...state.currentSession, messages: state.currentSession.messages.filter((m: Message) => m.id !== messageId) }
               : state.currentSession,
         })),
 
