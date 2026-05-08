@@ -31,7 +31,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { icon: MessageCircle, label: '聊天', path: '/chat', view: 'chat' as const },
-    { icon: Users, label: '伙伴', path: '/chat', view: 'chat' as const },
+    { icon: Users, label: '伙伴', path: '/companions', view: 'companions' as const },
     { icon: Mic, label: '声音', path: '/voice', view: 'voice' as const },
     { icon: Settings, label: '设置', path: '/settings', view: 'settings' as const },
   ];
@@ -114,8 +114,7 @@ export default function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path &&
-                            (item.view === 'chat' ? currentView === 'chat' || currentView === 'settings' || currentView === 'voice' : currentView === item.view);
+            const isActive = location.pathname === item.path && currentView === item.view;
 
             return (
               <button

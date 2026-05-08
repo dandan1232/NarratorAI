@@ -135,7 +135,7 @@ export interface Voice {
 export interface AppState {
   user: User | null;
   isInitialized: boolean;
-  currentView: 'welcome' | 'setup' | 'chat' | 'settings' | 'voice';
+  currentView: 'welcome' | 'setup' | 'chat' | 'settings' | 'voice' | 'companions';
 }
 
 // ==================== Phase 1: CyberPersona 设计理念 ====================

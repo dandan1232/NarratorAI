@@ -6,6 +6,7 @@ import SetupPage from './pages/SetupPage';
 import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
 import VoicePage from './pages/VoicePage';
+import CompanionsPage from './pages/CompanionsPage';
 import Layout from './components/Layout';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
     }
     const path = location.pathname;
     if (path.startsWith('/chat')) setCurrentView('chat');
+    else if (path.startsWith('/companions')) setCurrentView('companions');
     else if (path.startsWith('/voice')) setCurrentView('voice');
     else if (path.startsWith('/settings')) setCurrentView('settings');
     else if (path.startsWith('/setup')) setCurrentView('setup');
@@ -67,6 +69,10 @@ function App() {
         <Route
           path="/settings"
           element={isInitialized ? <SettingsPage /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/companions"
+          element={isInitialized ? <CompanionsPage /> : <Navigate to="/" replace />}
         />
         <Route
           path="/voice"
