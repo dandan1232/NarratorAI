@@ -1,6 +1,8 @@
 # 声悦 - NarratorAI
 
-智能情感陪伴聊天机器人前端项目
+> 一个有记忆、有性格、会成长的 AI 情感陪伴系统
+
+基于 [CyberPersona](https://github.com/harrylarryxyz/CyberPersona) 设计理念，构建有温度的赛博陪伴体验。角色在对话中逐步成型（量子态坍缩），好感度随互动增长，记忆跨会话保留。
 
 <div align="center">
 
@@ -14,7 +16,7 @@
 
 | 基础聊天 | 表情包互动 | 好感度面板 |
 |:---:|:---:|:---:|
-| ![聊天页面](images/chat.png) | ![表情包](images/chat-sticker.png) | ![好感度](images/chat-relationship.png) |
+| ![聊天页面](images/chat-sticker.png) | ![表情包](images/chat.png) | ![好感度](images/chat-relationship.png) |
 
 ### 任务与角色
 
@@ -85,7 +87,6 @@ cp .env.example .env
 编辑 `.env`：
 
 ```env
-VITE_MIMO_BASE_URL=https://api.xiaomimimo.com/anthropic
 VITE_MIMO_AUTH_TOKEN=你的MiMo API Key
 ```
 
@@ -147,12 +148,12 @@ src/
 
 通过 Vite 代理调用，避免 CORS 问题。API Key 在服务端代理中注入，前端不直接携带密钥。
 
-| 功能 | 代理路径 | 模型 |
-|------|----------|------|
-| 对话 | `/mimo/v1/messages` | mimo-v2.5-pro |
-| 语音合成 | `/mimo-tts/audio/speech` | MiMo-V2.5-TTS |
-| 声音克隆 | `/mimo-tts/audio/voices/clone` | MiMo-V2.5-TTS-VoiceClone |
-| 声音设计 | `/mimo-tts/audio/voices/design` | MiMo-V2.5-TTS-VoiceDesign |
+| 功能 | 代理路径 | 目标路径 | 模型 |
+|------|----------|----------|------|
+| 对话 | `/mimo/v1/messages` | `/anthropic/v1/messages` | mimo-v2.5-pro |
+| 语音合成 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts |
+| 声音克隆 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts-voiceclone |
+| 声音设计 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts-voicedesign |
 
 ### 表情包 API
 
@@ -172,4 +173,4 @@ src/
 
 [MIT License](LICENSE)
 
-Copyright (c) 2024 NarratorAI
+Copyright (c) 2026 念安@dandan1232
