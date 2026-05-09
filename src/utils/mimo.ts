@@ -49,7 +49,6 @@ class MimoClient {
     // 构建请求头，如果是直连模式则添加Authorization
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
     if (MIMO_DIRECT_URL && MIMO_AUTH_TOKEN) {
