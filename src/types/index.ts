@@ -34,6 +34,9 @@ export interface Companion {
   emotionalDepth: EmotionalDepthSystem;
   openingStrategy: OpeningStrategyType;
   achievements: AchievementSystem;
+
+  // Phase 3: 世界观同步
+  worldState: WorldState;
 }
 
 export type RelationshipType =
@@ -233,6 +236,8 @@ export interface EmotionalState {
   currentIntensity: number;  // 1-5
   moodFactor: number;        // 情绪因子 0.5-1.5，影响关系变化
   stressLevel: number;       // 压力等级 0-100
+  stressSources: StressSource[];  // 压力来源
+  lastStressDecay: number;       // 上次压力衰减时间
 }
 
 // 情绪深度系统
@@ -255,6 +260,35 @@ export interface MoodFactors {
   positiveMultiplier: number;  // 正面情绪倍率
   negativeMultiplier: number;  // 负面情绪倍率
   stressMultiplier: number;    // 压力倍率
+}
+
+// ==================== Phase 3: 世界观同步 ====================
+
+// 时间段
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night' | 'late_night';
+
+// 季节
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
+// 星期
+export type DayOfWeek = 'weekday' | 'weekend';
+
+// 天气
+export type Weather = 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'windy' | 'stormy';
+
+// 位置
+export type Location = 'home' | 'work' | 'school' | 'outdoor' | 'traveling';
+
+// 压力来源
+export type StressSource = 'negative_emotion' | 'late_night' | 'long_session';
+
+// 世界状态
+export interface WorldState {
+  timeOfDay: TimeOfDay;      // 自动
+  season: Season;             // 自动
+  dayOfWeek: DayOfWeek;       // 自动
+  weather: Weather;           // 用户设置
+  location: Location;         // 用户设置
 }
 
 // ==================== Phase 2: 开场策略 ====================

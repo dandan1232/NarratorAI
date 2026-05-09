@@ -3,7 +3,8 @@ import {
   Companion, CharacterCard, PersonalityProfile, AffectionLevel,
   RevealedFact, SessionSummary, Message, EmotionType,
   RelationshipDimensions, RelationshipLevel, EmotionalState, EmotionalDepthSystem,
-  OpeningStrategyType, OpeningStrategy, Achievement, CharacterCardAchievement, AchievementSystem
+  OpeningStrategyType, OpeningStrategy, Achievement, CharacterCardAchievement, AchievementSystem,
+  WorldState, TimeOfDay, Season, DayOfWeek, Weather, Location, StressSource
 } from '../types';
 
 // ==================== 人格原型 ====================
@@ -94,6 +95,180 @@ export function createInitialMemory() {
     emotionalMemories: [],
     revealedFacts: [],
   };
+}
+
+// ==================== Phase 3: 世界观同步 ====================
+
+// 创建初始世界状态
+export function createInitialWorldState(): WorldState {
+  return {
+    ...getWorldState(),
+    weather: 'sunny',
+    location: 'home',
+  };
+}
+
+// 自动获取世界状态（时间、季节、星期）
+export function getWorldState(): WorldState {
+  const now = new Date();
+  const hour = now.getHours();
+  const month = now.getMonth() + 1;
+  const day = now.getDay();
+
+  let timeOfDay: TimeOfDay;
+  if (hour >= 6 && hour < 12) timeOfDay = 'morning';
+  else if (hour >= 12 && hour < 18) timeOfDay = 'afternoon';
+  else if (hour >= 18 && hour < 22) timeOfDay = 'evening';
+  else if (hour >= 22 || hour < 2) timeOfDay = 'late_night';
+  else timeOfDay = 'night';
+
+  let season: Season;
+  if (month >= 3 && month <= 5) season = 'spring';
+  else if (month >= 6 && month <= 8) season = 'summer';
+  else if (month >= 9 && month <= 11) season = 'autumn';
+  else season = 'winter';
+
+  const dayOfWeek: DayOfWeek = (day === 0 || day === 6) ? 'weekend' : 'weekday';
+
+  return {
+    timeOfDay,
+    season,
+    dayOfWeek,
+    weather: 'sunny',
+    location: 'home',
+  };
+}
+
+// 时间段名称
+export const TIME_OF_DAY_NAMES: Record<TimeOfDay, string> = {
+  morning: '早上',
+  afternoon: '下午',
+  evening: '晚上',
+  night: '深夜',
+  late_night: '凌晨',
+};
+
+// 季节名称
+export const SEASON_NAMES: Record<Season, string> = {
+  spring: '春天',
+  summer: '夏天',
+  autumn: '秋天',
+  winter: '冬天',
+};
+
+// 天气名称
+export const WEATHER_NAMES: Record<Weather, string> = {
+  sunny: '晴天',
+  cloudy: '多云',
+  rainy: '下雨',
+  snowy: '下雪',
+  windy: '刮风',
+  stormy: '暴风雨',
+};
+
+// 位置名称
+export const LOCATION_NAMES: Record<Location, string> = {
+  home: '在家',
+  work: '上班',
+  school: '上学',
+  outdoor: '户外',
+  traveling: '旅行',
+};
+
+// 获取世界状态指南（用于系统提示词）
+export function getWorldGuide(worldState: WorldState): string {
+  const timeDesc = TIME_OF_DAY_NAMES[worldState.timeOfDay];
+  const seasonDesc = SEASON_NAMES[worldState.season];
+  const weatherDesc = WEATHER_NAMES[worldState.weather];
+  const locationDesc = LOCATION_NAMES[worldState.location];
+  const dayDesc = worldState.dayOfWeek === 'weekend' ? '周末' : '工作日';
+
+  return `【当前世界】
+- 时间: ${timeDesc}
+- 季节: ${seasonDesc}
+- 天气: ${weatherDesc}
+- 位置: ${locationDesc}
+- ${dayDesc}`;
+}
+
+// 获取时间感知的开场策略调整
+export function getTimeAwareGreeting(worldState: WorldState): string | null {
+  const { timeOfDay } = worldState;
+  switch (timeOfDay) {
+    case 'morning':
+      return '早上好呀~昨晚睡得好吗？';
+    case 'late_night':
+    case 'night':
+      return '这么晚了还没睡呀？要注意身体哦~';
+    default:
+      return null;
+  }
+}
+
+// ==================== 压力系统增强 ====================
+
+// 压力阈值行为描述
+export function getStressBehavior(stressLevel: number): string {
+  if (stressLevel > 70) {
+    return '【压力状态】压力很大，容易焦躁、回复简短、需要被安慰，可能会主动关心对方是否也累了。';
+  }
+  if (stressLevel > 50) {
+    return '【压力状态】有些疲惫，偶尔叹气，回复略显乏力，但仍然努力保持积极。';
+  }
+  if (stressLevel < 20) {
+    return '【压力状态】心情放松，很愿意聊天，可能会主动分享开心的事。';
+  }
+  return '';
+}
+
+// 计算压力衰减（每小时衰减 2 点）
+export function calculateStressDecay(
+  currentStress: number,
+  lastDecayTime: number,
+  now: number
+): { stressLevel: number; lastStressDecay: number } {
+  const elapsedHours = (now - lastDecayTime) / (1000 * 60 * 60);
+  const decayPoints = Math.floor(elapsedHours * 2);
+  if (decayPoints <= 0) return { stressLevel: currentStress, lastStressDecay: lastDecayTime };
+
+  return {
+    stressLevel: Math.max(0, currentStress - decayPoints),
+    lastStressDecay: now,
+  };
+}
+
+// 添加压力来源
+export function addStressSource(
+  sources: StressSource[],
+  newSource: StressSource
+): StressSource[] {
+  // 避免重复添加同一来源，但保留不同类型
+  if (sources.includes(newSource)) return sources;
+  return [...sources, newSource].slice(-3); // 最多保留 3 个来源
+}
+
+// 移除压力来源
+export function removeStressSource(
+  sources: StressSource[],
+  source: StressSource
+): StressSource[] {
+  return sources.filter((s) => s !== source);
+}
+
+// 检测压力来源
+export function detectStressSource(
+  userMessage: string,
+  worldState: WorldState
+): StressSource | null {
+  const lowerMessage = userMessage.toLowerCase();
+  const negativeWords = ['累', '烦', '压力', '焦虑', '难过', '伤心', '生气', '讨厌'];
+  if (negativeWords.some((w) => lowerMessage.includes(w))) {
+    return 'negative_emotion';
+  }
+  if (worldState.timeOfDay === 'late_night' || worldState.timeOfDay === 'night') {
+    return 'late_night';
+  }
+  return null;
 }
 
 // ==================== 好感度相关 ====================
@@ -369,7 +544,7 @@ export function formatSessionSummaries(summaries: SessionSummary[]): string {
 // ==================== 系统提示词构建 ====================
 
 export function buildSystemPrompt(companion: Companion): string {
-  const { characterCard, affection, memory, relationshipSystem, emotionalDepth } = companion;
+  const { characterCard, affection, memory, relationshipSystem, emotionalDepth, worldState } = companion;
 
   // 人格描述
   const personalityDesc = `你是${companion.name}，${companion.description}
@@ -401,6 +576,8 @@ export function buildSystemPrompt(companion: Companion): string {
 - 强度: ${emotionalDepth.state.currentIntensity}/5
 - 压力: ${emotionalDepth.state.stressLevel}/100
 
+${worldState ? getWorldGuide(worldState) : ''}
+
 【已知信息】
 ${formatRevealedFacts(memory.revealedFacts)}
 
@@ -413,11 +590,16 @@ ${formatSessionSummaries(memory.sessionSummaries)}`;
   // 根据情绪状态调整行为
   const emotionGuide = getEmotionGuide(emotionalDepth.state);
 
+  // 压力行为指南
+  const stressBehavior = getStressBehavior(emotionalDepth.state.stressLevel);
+
   return `${personalityDesc}
 
 ${toneGuide}
 
 ${emotionGuide}
+
+${stressBehavior}
 
 请用自然、真实的语气回复，像真人聊天一样简洁。
 可以适当使用语气词让对话更自然。
@@ -532,6 +714,8 @@ export function createInitialEmotionalDepthSystem(): EmotionalDepthSystem {
       currentIntensity: 1,
       moodFactor: 1.0,
       stressLevel: 0,
+      stressSources: [],
+      lastStressDecay: Date.now(),
     },
     history: [],
     factors: {
@@ -546,7 +730,8 @@ export function createInitialEmotionalDepthSystem(): EmotionalDepthSystem {
 export function updateEmotionalState(
   currentState: EmotionalState,
   newEmotion: EmotionType,
-  newIntensity: number
+  newIntensity: number,
+  newStressSource?: StressSource | null
 ): EmotionalState {
   // 计算情绪因子
   const isPositive = ['happy', 'loving', 'excited', 'grateful'].includes(newEmotion);
@@ -558,14 +743,28 @@ export function updateEmotionalState(
 
   // 更新压力等级
   let stressLevel = currentState.stressLevel;
-  if (isNegative) stressLevel = Math.min(100, stressLevel + newIntensity * 5);
-  else stressLevel = Math.max(0, stressLevel - newIntensity * 2);
+  let stressSources = [...currentState.stressSources];
+
+  if (isNegative) {
+    stressLevel = Math.min(100, stressLevel + newIntensity * 5);
+    if (newStressSource) {
+      stressSources = addStressSource(stressSources, newStressSource);
+    }
+  } else {
+    stressLevel = Math.max(0, stressLevel - newIntensity * 2);
+    // 正面情绪时移除对应压力来源
+    if (newStressSource) {
+      stressSources = removeStressSource(stressSources, newStressSource);
+    }
+  }
 
   return {
     currentEmotion: newEmotion,
     currentIntensity: newIntensity,
     moodFactor: Math.max(0.5, Math.min(1.5, moodFactor)),
     stressLevel,
+    stressSources,
+    lastStressDecay: currentState.lastStressDecay,
   };
 }
 

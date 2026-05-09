@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware';
 import {
   AppState, CompanionState, User, Companion, ChatSession, Message, Memory, Voice,
   CharacterCard, AffectionSystem, AffectionLevel, RevealedFact, SessionSummary, EmotionalMemory,
-  RelationshipDimensions, RelationshipLevel, EmotionalState, EmotionalHistoryEntry
+  RelationshipDimensions, RelationshipLevel, EmotionalState, EmotionalHistoryEntry,
+  WorldState
 } from '../types';
 import {
   createInitialCharacterCard,
@@ -13,6 +14,7 @@ import {
   createInitialEmotionalDepthSystem,
   getRandomOpeningStrategy,
   createInitialAchievementSystem,
+  createInitialWorldState,
 } from '../utils/characterAnalyzer';
 
 // 好感度等级计算
@@ -27,15 +29,29 @@ function calculateAffectionLevel(points: number): AffectionLevel {
 
 // 迁移旧数据：确保伴侣有所有必需字段
 function migrateCompanion(companion: any): Companion {
+  // 迁移 emotionalState：补充 stressSources 和 lastStressDecay
+  let emotionalDepth = companion.emotionalDepth || createInitialEmotionalDepthSystem();
+  if (emotionalDepth.state && !emotionalDepth.state.stressSources) {
+    emotionalDepth = {
+      ...emotionalDepth,
+      state: {
+        ...emotionalDepth.state,
+        stressSources: [],
+        lastStressDecay: emotionalDepth.state.lastStressDecay || Date.now(),
+      },
+    };
+  }
+
   return {
     ...companion,
     characterCard: companion.characterCard || createInitialCharacterCard(),
     affection: companion.affection || createInitialAffection(),
     memory: companion.memory || createInitialMemory(),
     relationshipSystem: companion.relationshipSystem || createInitialRelationshipSystem(),
-    emotionalDepth: companion.emotionalDepth || createInitialEmotionalDepthSystem(),
+    emotionalDepth,
     openingStrategy: companion.openingStrategy || getRandomOpeningStrategy(),
     achievements: companion.achievements || createInitialAchievementSystem(),
+    worldState: companion.worldState || createInitialWorldState(),
   };
 }
 
@@ -99,6 +115,9 @@ interface AppStore extends AppState, CompanionState {
   // 情绪深度系统相关
   updateEmotionalState: (companionId: string, updates: Partial<EmotionalState>) => void;
   addEmotionalHistoryEntry: (companionId: string, entry: EmotionalHistoryEntry) => void;
+
+  // 世界观相关
+  updateWorldState: (companionId: string, updates: Partial<WorldState>) => void;
 
   // 成就系统相关
   unlockAchievement: (companionId: string, achievementId: string) => void;
@@ -499,6 +518,25 @@ export const useAppStore = create<AppStore>()(
             currentCompanion:
               state.currentCompanion?.id === companionId
                 ? { ...state.currentCompanion, emotionalDepth: updatedEmotionalDepth }
+                : state.currentCompanion,
+          };
+        }),
+
+      // 世界观相关
+      updateWorldState: (companionId, updates) =>
+        set((state) => {
+          const companion = state.companions.find((c: Companion) => c.id === companionId);
+          if (!companion) return state;
+
+          const updatedWorldState = { ...companion.worldState, ...updates };
+
+          return {
+            companions: state.companions.map((c: Companion) =>
+              c.id === companionId ? { ...c, worldState: updatedWorldState } : c
+            ),
+            currentCompanion:
+              state.currentCompanion?.id === companionId
+                ? { ...state.currentCompanion, worldState: updatedWorldState }
                 : state.currentCompanion,
           };
         }),

@@ -29,6 +29,9 @@ import {
   checkAchievements,
   checkCharacterCardAchievements,
   getOpeningMessage,
+  getWorldState,
+  detectStressSource,
+  calculateStressDecay,
 } from '../utils/characterAnalyzer';
 import { AffectionDisplay } from '../components/AffectionDisplay';
 import { RelationshipPanel } from '../components/RelationshipPanel';
@@ -106,6 +109,7 @@ export default function ChatPage() {
     unlockAchievement,
     unlockCharacterCardAchievement,
     deleteMessage,
+    updateWorldState,
   } = useAppStore();
 
   // Auto-scroll to bottom
@@ -189,6 +193,32 @@ export default function ChatPage() {
       textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     }
   }, [inputText]);
+
+  // Update world state (time, season) on mount and trigger stress decay
+  useEffect(() => {
+    if (!currentCompanion) return;
+
+    const newWorldState = getWorldState();
+    // Preserve user-set weather and location, update auto-detected fields
+    updateWorldState(currentCompanion.id, {
+      timeOfDay: newWorldState.timeOfDay,
+      season: newWorldState.season,
+      dayOfWeek: newWorldState.dayOfWeek,
+    });
+
+    // Stress decay
+    const { stressLevel, lastStressDecay } = calculateStressDecay(
+      currentCompanion.emotionalDepth.state.stressLevel,
+      currentCompanion.emotionalDepth.state.lastStressDecay || currentCompanion.emotionalDepth.state.lastStressDecay,
+      Date.now()
+    );
+    if (stressLevel !== currentCompanion.emotionalDepth.state.stressLevel) {
+      updateEmotionalStateStore(currentCompanion.id, {
+        stressLevel,
+        lastStressDecay,
+      });
+    }
+  }, [currentCompanion?.id]);
 
   const handleSend = async (text?: string) => {
     const sendText = text || inputText;
@@ -274,10 +304,12 @@ export default function ChatPage() {
       }
 
       const { emotion, intensity } = detectEmotionFromText(responseText);
+      const stressSource = detectStressSource(sendText, currentCompanion.worldState);
       const newEmotionalState = updateEmotionalState(
         currentCompanion.emotionalDepth.state,
         emotion,
-        intensity
+        intensity,
+        stressSource
       );
       updateEmotionalStateStore(currentCompanion.id, newEmotionalState);
       addEmotionalHistoryEntry(currentCompanion.id, {

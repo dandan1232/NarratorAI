@@ -20,6 +20,7 @@ import {
   createInitialEmotionalDepthSystem,
   getRandomOpeningStrategy,
   createInitialAchievementSystem,
+  createInitialWorldState,
 } from '../utils/characterAnalyzer';
 
 const steps = [
@@ -140,6 +141,8 @@ export default function SetupPage() {
         emotionalDepth: createInitialEmotionalDepthSystem(),
         openingStrategy: getRandomOpeningStrategy(),
         achievements: createInitialAchievementSystem(),
+        // Phase 3: 世界观同步
+        worldState: createInitialWorldState(),
       };
       addCompanion(newCompanion);
       setCurrentCompanion(newCompanion);
