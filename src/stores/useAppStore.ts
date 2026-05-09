@@ -42,10 +42,16 @@ function migrateCompanion(companion: any): Companion {
     };
   }
 
+  // 迁移 affection：补充 lastDailyReset
+  let affection = companion.affection || createInitialAffection();
+  if (affection.lastDailyReset === undefined) {
+    affection = { ...affection, lastDailyReset: Date.now() };
+  }
+
   return {
     ...companion,
     characterCard: companion.characterCard || createInitialCharacterCard(),
-    affection: companion.affection || createInitialAffection(),
+    affection,
     memory: companion.memory || createInitialMemory(),
     relationshipSystem: companion.relationshipSystem || createInitialRelationshipSystem(),
     emotionalDepth,

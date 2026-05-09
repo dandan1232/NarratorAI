@@ -78,13 +78,71 @@ export function createInitialAffection(): {
   level: AffectionLevel;
   lastInteraction: number;
   dailyTasks: typeof DEFAULT_DAILY_TASKS;
+  lastDailyReset: number;
 } {
   return {
     points: 0,
     level: 'stranger',
     lastInteraction: Date.now(),
     dailyTasks: DEFAULT_DAILY_TASKS.map(task => ({ ...task })),
+    lastDailyReset: Date.now(),
   };
+}
+
+// ==================== 每日任务 ====================
+
+// 检测是否需要重置每日任务（凌晨 3:00 后新的一天）
+export function shouldResetDailyTasks(lastReset: number): boolean {
+  const now = new Date();
+  const last = new Date(lastReset);
+
+  // 获取今天凌晨 3:00 的时间戳
+  const today3AM = new Date(now);
+  today3AM.setHours(3, 0, 0, 0);
+
+  // 如果上次重置在今天 3:00 之前，且现在已过 3:00，需要重置
+  if (last < today3AM && now >= today3AM) {
+    return true;
+  }
+
+  // 跨天的情况：上次重置是昨天或更早
+  if (last.toDateString() !== now.toDateString() && now.getHours() >= 3) {
+    return true;
+  }
+
+  return false;
+}
+
+// 根据用户消息自动完成每日任务
+export function detectTaskCompletion(
+  userMessage: string,
+  messageCount: number
+): string[] {
+  const completed: string[] = [];
+  const lower = userMessage.toLowerCase();
+
+  // 早安
+  if (lower.includes('早安') || lower.includes('早上好')) {
+    completed.push('morning');
+  }
+
+  // 晚安
+  if (lower.includes('晚安') || lower.includes('睡了') || lower.includes('睡觉')) {
+    completed.push('night');
+  }
+
+  // 分享心情
+  const moodWords = ['心情', '开心', '难过', '今天', '刚才', '发生', '觉得', '感觉'];
+  if (moodWords.some(w => lower.includes(w))) {
+    completed.push('share');
+  }
+
+  // 深入对话（超过 20 轮）
+  if (messageCount >= 20) {
+    completed.push('deep');
+  }
+
+  return completed;
 }
 
 // 创建初始记忆系统

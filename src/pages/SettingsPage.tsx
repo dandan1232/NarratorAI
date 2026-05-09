@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/useAppStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,16 @@ import {
   Check,
   Download,
   Upload,
+  Camera,
 } from 'lucide-react';
+
+const AVATAR_OPTIONS = [
+  '👨', '👩', '🧑', '👴', '👵', '🧑‍⚕️',
+  '👦', '👧', '🧒', '👶', '🧒🏻', '👩‍🦰',
+  '👨‍🦱', '👩‍🦳', '🧑‍🎤', '👨‍💻', '👩‍🎨', '🧑‍🍳',
+  '🦊', '🐱', '🐶', '🐰', '🐼', '🐨',
+  '🦋', '🌸', '⭐', '🔥', '💎', '🌙',
+];
 
 export default function SettingsPage() {
   const {
@@ -28,9 +37,11 @@ export default function SettingsPage() {
 
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [companionName, setCompanionName] = useState(currentCompanion?.name || '');
+  const [companionAvatar, setCompanionAvatar] = useState(currentCompanion?.avatar || '');
   const [companionPersonality, setCompanionPersonality] = useState(currentCompanion?.personality || '');
   const [saved, setSaved] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const avatarFileRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
 
@@ -50,6 +61,7 @@ export default function SettingsPage() {
     if (currentCompanion) {
       updateCompanion(currentCompanion.id, {
         name: companionName,
+        avatar: companionAvatar,
         personality: companionPersonality,
       });
       showSaved('伙伴设置已保存');
@@ -60,6 +72,26 @@ export default function SettingsPage() {
     reset();
     setCurrentView('welcome');
     navigate('/');
+  };
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+    // 限制文件大小（200KB）
+    if (file.size > 200 * 1024) {
+      alert('图片大小不能超过 200KB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCompanionAvatar(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleExport = () => {
@@ -212,8 +244,12 @@ export default function SettingsPage() {
         {currentCompanion && (
           <div className="glass rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 flex items-center justify-center text-xl">
-                {currentCompanion.avatar}
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 flex items-center justify-center text-xl overflow-hidden">
+                {currentCompanion.avatar.startsWith('data:') ? (
+                  <img src={currentCompanion.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  currentCompanion.avatar
+                )}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
@@ -235,6 +271,54 @@ export default function SettingsPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">头像</label>
+                {/* Current avatar preview */}
+                {companionAvatar && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 dark:from-orange-800 dark:to-amber-800 flex items-center justify-center overflow-hidden">
+                      {companionAvatar.startsWith('data:') ? (
+                        <img src={companionAvatar} alt="头像" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-3xl">{companionAvatar}</span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-400">当前头像</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {AVATAR_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => setCompanionAvatar(emoji)}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center text-2xl transition-all ${
+                        companionAvatar === emoji
+                          ? 'bg-gradient-to-br from-orange-100 to-amber-100 border-2 border-orange-400 shadow-md scale-110'
+                          : 'bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 hover:border-orange-300 hover:scale-105'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  {/* Upload custom photo button */}
+                  <button
+                    onClick={() => avatarFileRef.current?.click()}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-300 dark:border-gray-500 hover:border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all"
+                    title="上传自定义头像"
+                  >
+                    <Camera className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+                <input
+                  ref={avatarFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">性格特点</label>
                 <textarea
                   value={companionPersonality}
@@ -247,6 +331,7 @@ export default function SettingsPage() {
                 onClick={handleSaveCompanion}
                 disabled={
                   companionName === currentCompanion.name &&
+                  companionAvatar === currentCompanion.avatar &&
                   companionPersonality === currentCompanion.personality
                 }
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"

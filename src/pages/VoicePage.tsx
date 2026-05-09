@@ -208,7 +208,11 @@ export default function VoicePage() {
 
               {currentCompanion && (
                 <div className="mb-4 flex items-center gap-3 p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800">
-                  <span className="text-2xl">{currentCompanion.avatar}</span>
+                  {currentCompanion.avatar.startsWith('data:') ? (
+                    <img src={currentCompanion.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">{currentCompanion.avatar}</span>
+                  )}
                   <div>
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
                       {currentCompanion.name}

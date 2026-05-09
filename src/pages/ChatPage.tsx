@@ -33,6 +33,8 @@ import {
   getWorldState,
   detectStressSource,
   calculateStressDecay,
+  detectTaskCompletion,
+  shouldResetDailyTasks,
 } from '../utils/characterAnalyzer';
 import { AffectionDisplay } from '../components/AffectionDisplay';
 import { RelationshipPanel } from '../components/RelationshipPanel';
@@ -124,6 +126,8 @@ export default function ChatPage() {
     unlockCharacterCardAchievement,
     deleteMessage,
     updateWorldState,
+    completeDailyTask,
+    resetDailyTasks,
   } = useAppStore();
 
   // Auto-scroll to bottom
@@ -231,6 +235,11 @@ export default function ChatPage() {
         stressLevel,
         lastStressDecay,
       });
+    }
+
+    // 每日任务重置（凌晨 3:00 后）
+    if (shouldResetDailyTasks(currentCompanion.affection.lastDailyReset)) {
+      resetDailyTasks(currentCompanion.id);
     }
   }, [currentCompanion?.id]);
 
@@ -373,6 +382,17 @@ export default function ChatPage() {
       }
 
       const userMessageCount = allMessages.filter((m) => m.role === 'user').length;
+
+      // 自动完成每日任务
+      const completedTaskIds = detectTaskCompletion(sendText, userMessageCount);
+      completedTaskIds.forEach((taskId) => {
+        const task = currentCompanion.affection.dailyTasks.find((t) => t.id === taskId);
+        if (task && !task.completed) {
+          completeDailyTask(currentCompanion.id, taskId);
+          addAffectionPoints(currentCompanion.id, task.reward);
+        }
+      });
+
       const newAchievementIds = checkAchievements(currentCompanion, userMessageCount);
       newAchievementIds.forEach((id) => unlockAchievement(currentCompanion.id, id));
 
@@ -502,8 +522,12 @@ export default function ChatPage() {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 dark:from-orange-800 dark:to-amber-800 flex items-center justify-center text-2xl">
-                {currentCompanion.avatar}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 dark:from-orange-800 dark:to-amber-800 flex items-center justify-center text-2xl overflow-hidden">
+                {currentCompanion.avatar.startsWith('data:') ? (
+                  <img src={currentCompanion.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  currentCompanion.avatar
+                )}
               </div>
               <div>
                 <h2 className="font-semibold text-gray-800 dark:text-gray-100">
@@ -568,7 +592,11 @@ export default function ChatPage() {
                     >
                       {message.role === 'assistant' && (
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg">{currentCompanion.avatar}</span>
+                          {currentCompanion.avatar.startsWith('data:') ? (
+                            <img src={currentCompanion.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          ) : (
+                            <span className="text-lg">{currentCompanion.avatar}</span>
+                          )}
                           <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                             {currentCompanion.name}
                           </span>
@@ -635,7 +663,11 @@ export default function ChatPage() {
             >
               <div className="message-bubble assistant">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{currentCompanion.avatar}</span>
+                  {currentCompanion.avatar.startsWith('data:') ? (
+                    <img src={currentCompanion.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <span className="text-lg">{currentCompanion.avatar}</span>
+                  )}
                   <span className="text-sm font-medium text-gray-600">
                     {currentCompanion.name}
                   </span>

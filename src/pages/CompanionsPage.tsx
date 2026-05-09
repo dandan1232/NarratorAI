@@ -128,8 +128,12 @@ export default function CompanionsPage() {
 
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
-                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${levelColors[companion.affection?.level || 'stranger']} flex items-center justify-center text-3xl shrink-0`}>
-                      {companion.avatar}
+                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${levelColors[companion.affection?.level || 'stranger']} flex items-center justify-center text-3xl shrink-0 overflow-hidden`}>
+                      {companion.avatar.startsWith('data:') ? (
+                        <img src={companion.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        companion.avatar
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">

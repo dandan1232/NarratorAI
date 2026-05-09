@@ -197,6 +197,7 @@ export interface AffectionSystem {
   level: AffectionLevel;
   lastInteraction: number;  // 上次互动时间
   dailyTasks: DailyTask[];  // 每日任务
+  lastDailyReset: number;   // 上次重置时间
 }
 
 // 每日任务
