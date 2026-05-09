@@ -7,6 +7,7 @@ import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
 import VoicePage from './pages/VoicePage';
 import CompanionsPage from './pages/CompanionsPage';
+import DrivePage from './pages/DrivePage';
 import Layout from './components/Layout';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
     else if (path.startsWith('/voice')) setCurrentView('voice');
     else if (path.startsWith('/settings')) setCurrentView('settings');
     else if (path.startsWith('/setup')) setCurrentView('setup');
+    else if (path.startsWith('/drive')) setCurrentView('drive');
   }, [location.pathname, isInitialized, setCurrentView]);
 
   // Auto-select companion if none selected but companions exist
@@ -44,6 +46,11 @@ function App() {
       navigate('/chat');
     }
   }, [isInitialized, location.pathname, companions.length, navigate]);
+
+  // Drive mode is full-screen, outside Layout
+  if (location.pathname === '/drive') {
+    return isInitialized ? <DrivePage /> : <Navigate to="/" replace />;
+  }
 
   return (
     <Layout>
