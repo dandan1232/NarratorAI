@@ -161,13 +161,13 @@ export default function SetupPage() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="space-y-6"
+            className="space-y-4 md:space-y-6"
           >
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                 你好，很高兴见到你
               </h2>
-              <p className="text-gray-600 dark:text-gray-300">请告诉我你的昵称，这样我就能更好地陪伴你</p>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">请告诉我你的昵称，这样我就能更好地陪伴你</p>
             </div>
 
             <div className="max-w-sm mx-auto">
@@ -176,7 +176,7 @@ export default function SetupPage() {
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="输入你的昵称..."
-                className="w-full px-6 py-4 rounded-2xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 text-center text-lg transition-colors"
+                className="w-full px-4 md:px-6 py-3 md:py-4 rounded-2xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 text-center text-base md:text-lg transition-colors"
               />
             </div>
           </motion.div>
@@ -189,34 +189,34 @@ export default function SetupPage() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="space-y-6"
+            className="space-y-4 md:space-y-6"
           >
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                 选择你的陪伴伙伴
               </h2>
-              <p className="text-gray-600 dark:text-gray-300">选择一个你喜欢的伙伴类型，或者自定义一个</p>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">选择一个你喜欢的伙伴类型，或者自定义一个</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
               {companionTemplates.map((template) => (
                 <button
                   key={template.id}
                   onClick={() => setSelectedTemplate(template.id)}
-                  className={`relative p-6 rounded-2xl transition-all duration-300 ${
+                  className={`relative p-4 md:p-6 rounded-2xl transition-all duration-300 ${
                     selectedTemplate === template.id
                       ? 'bg-gradient-to-br from-orange-100 to-amber-100 border-2 border-orange-300 shadow-lg scale-105'
                       : 'glass hover:shadow-md'
                   }`}
                 >
                   {selectedTemplate === template.id && (
-                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
-                      <Check className="w-4 h-4 text-white" />
+                    <div className="absolute top-2 right-2 w-5 h-5 md:w-6 md:h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 md:w-4 md:h-4 text-white" />
                     </div>
                   )}
-                  <div className="text-4xl mb-3">{template.avatar}</div>
-                  <h3 className="font-semibold text-gray-800 dark:text-gray-100">{template.name}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">{template.relationship}</p>
+                  <div className="text-2xl md:text-4xl mb-2 md:mb-3">{template.avatar}</div>
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm md:text-base">{template.name}</h3>
+                  <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">{template.relationship}</p>
                 </button>
               ))}
             </div>
@@ -230,28 +230,28 @@ export default function SetupPage() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="space-y-6"
+            className="space-y-4 md:space-y-6"
           >
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                 定制个性特点
               </h2>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">
                 描述你希望伙伴具有的性格特点，或者使用默认设置
               </p>
             </div>
 
             <div className="max-w-md mx-auto">
               {selectedTemplate && (
-                <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50">
-                  <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">默认性格特点：</h4>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-4 md:mb-6 p-3 md:p-4 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50">
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 text-sm md:text-base">默认性格特点：</h4>
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {companionTemplates
                       .find((t) => t.id === selectedTemplate)
                       ?.traits.map((trait) => (
                         <span
                           key={trait}
-                          className="px-3 py-1 rounded-full bg-white text-sm text-orange-600 border border-orange-200 dark:border-gray-600"
+                          className="px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-white text-xs md:text-sm text-orange-600 border border-orange-200 dark:border-gray-600"
                         >
                           {trait}
                         </span>
@@ -264,7 +264,7 @@ export default function SetupPage() {
                 value={customPersonality}
                 onChange={(e) => setCustomPersonality(e.target.value)}
                 placeholder="描述你想要的性格特点，例如：温柔、幽默、善解人意..."
-                className="w-full h-32 px-4 py-3 rounded-2xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 resize-none transition-colors"
+                className="w-full h-24 md:h-32 px-3 md:px-4 py-2 md:py-3 rounded-2xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 resize-none transition-colors text-sm md:text-base"
               />
             </div>
           </motion.div>
@@ -277,28 +277,28 @@ export default function SetupPage() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="space-y-6 text-center"
+            className="space-y-4 md:space-y-6 text-center"
           >
-            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 flex items-center justify-center animate-float">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-300 to-amber-300 flex items-center justify-center">
-                <Heart className="w-10 h-10 text-white" />
+            <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 flex items-center justify-center animate-float">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-orange-300 to-amber-300 flex items-center justify-center">
+                <Heart className="w-8 h-8 md:w-10 md:h-10 text-white" />
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
               一切准备就绪
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 max-w-md mx-auto">
               {nickname || '用户'}，你的陪伴伙伴已经准备好认识你了。
               点击开始，开启你们的对话之旅。
             </p>
 
             {selectedTemplate && (
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white shadow-sm">
-                <span className="text-2xl">
+              <div className="inline-flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 rounded-full bg-white shadow-sm">
+                <span className="text-xl md:text-2xl">
                   {companionTemplates.find((t) => t.id === selectedTemplate)?.avatar}
                 </span>
-                <span className="font-medium text-gray-800 dark:text-gray-100">
+                <span className="font-medium text-gray-800 dark:text-gray-100 text-sm md:text-base">
                   {companionTemplates.find((t) => t.id === selectedTemplate)?.name}
                 </span>
               </div>
@@ -312,32 +312,32 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
+    <div className="min-h-screen flex items-center justify-center p-4 md:p-8 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl w-full"
+        className="max-w-2xl w-full py-8"
       >
         {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-12">
+        <div className="flex items-center justify-center mb-8 md:mb-12 overflow-x-auto">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                   currentStep >= step.id
                     ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
                     : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 dark:text-gray-500'
                 }`}
               >
                 {currentStep > step.id ? (
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4 md:w-5 md:h-5" />
                 ) : (
-                  <step.icon className="w-5 h-5" />
+                  <step.icon className="w-4 h-4 md:w-5 md:h-5" />
                 )}
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`w-20 h-1 mx-2 transition-colors duration-300 ${
+                  className={`w-8 md:w-20 h-1 mx-1 md:mx-2 transition-colors duration-300 ${
                     currentStep > step.id ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-600'
                   }`}
                 />
@@ -347,7 +347,7 @@ export default function SetupPage() {
         </div>
 
         {/* Step Content */}
-        <div className="glass rounded-3xl p-8 mb-8 min-h-[300px] flex items-center justify-center">
+        <div className="glass rounded-3xl p-4 md:p-8 mb-6 md:mb-8 min-h-[250px] md:min-h-[300px] flex items-center justify-center">
           <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
         </div>
 
@@ -356,7 +356,7 @@ export default function SetupPage() {
           <button
             onClick={handleBack}
             disabled={currentStep === 1}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 ${
+            className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 rounded-xl transition-all duration-200 text-sm md:text-base ${
               currentStep === 1
                 ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
                 : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100'
@@ -370,7 +370,7 @@ export default function SetupPage() {
             <button
               onClick={handleNext}
               disabled={currentStep === 2 && !selectedTemplate}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-200 ${
+              className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 rounded-xl transition-all duration-200 text-sm md:text-base ${
                 currentStep === 2 && !selectedTemplate
                   ? 'opacity-50 cursor-not-allowed bg-gray-300'
                   : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:shadow-lg'
@@ -382,7 +382,7 @@ export default function SetupPage() {
           ) : (
             <button
               onClick={handleComplete}
-              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
+              className="flex items-center gap-2 px-6 md:px-8 py-2 md:py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200 text-sm md:text-base"
             >
               开始聊天
               <MessageCircle className="w-4 h-4" />
