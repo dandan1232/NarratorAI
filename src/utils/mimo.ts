@@ -1,6 +1,12 @@
-// 使用代理路径，避免 CORS 问题
-const MIMO_PROXY_PATH = '/mimo';
-const MIMO_TTS_PROXY_PATH = '/mimo-tts';
+// 检查环境变量，决定使用代理还是直连
+const MIMO_BASE_URL = import.meta.env.VITE_MIMO_BASE_URL || '';
+const MIMO_AUTH_TOKEN = import.meta.env.VITE_MIMO_AUTH_TOKEN || '';
+
+// 如果有环境变量，使用直连；否则使用代理路径
+const MIMO_PROXY_PATH = MIMO_BASE_URL ? '' : '/mimo';
+const MIMO_TTS_PROXY_PATH = MIMO_BASE_URL ? '' : '/mimo-tts';
+const MIMO_DIRECT_URL = MIMO_BASE_URL ? MIMO_BASE_URL : '';
+const MIMO_TTS_DIRECT_URL = MIMO_BASE_URL ? MIMO_BASE_URL.replace('/anthropic', '') : '';
 
 export interface MimoMessage {
   role: 'user' | 'assistant' | 'system';
@@ -36,12 +42,23 @@ class MimoClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const response = await fetch(`${this.proxyPath}${endpoint}`, {
+    // 构建完整的请求URL
+    const baseUrl = MIMO_DIRECT_URL || this.proxyPath;
+    const url = `${baseUrl}${endpoint}`;
+
+    // 构建请求头，如果是直连模式则添加Authorization
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (MIMO_DIRECT_URL && MIMO_AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${MIMO_AUTH_TOKEN}`;
+    }
+
+    const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -115,11 +132,22 @@ class MimoClient {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
     audioConfig: { format?: string; voice?: string }
   ): Promise<ArrayBuffer> {
-    const response = await fetch(`${this.ttsProxyPath}/v1/chat/completions`, {
+    // 构建完整的请求URL
+    const baseUrl = MIMO_TTS_DIRECT_URL || this.ttsProxyPath;
+    const url = `${baseUrl}/v1/chat/completions`;
+
+    // 构建请求头，如果是直连模式则添加Authorization
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (MIMO_TTS_DIRECT_URL && MIMO_AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${MIMO_AUTH_TOKEN}`;
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         model,
         messages,
