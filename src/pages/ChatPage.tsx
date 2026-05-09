@@ -103,6 +103,7 @@ export default function ChatPage() {
     addAffectionPoints,
     addRevealedFact,
     addSessionSummary,
+    addEmotionalMemory,
     updateRelationshipDimensions,
     updateEmotionalState: updateEmotionalStateStore,
     addEmotionalHistoryEntry,
@@ -318,6 +319,17 @@ export default function ChatPage() {
         trigger: sendText.slice(0, 50),
         timestamp: Date.now(),
       });
+
+      // 记录情绪记忆
+      if (emotion !== 'neutral') {
+        addEmotionalMemory(currentCompanion.id, {
+          id: `emo-${Date.now()}`,
+          content: sendText.slice(0, 50),
+          emotion,
+          intensity,
+          timestamp: Date.now(),
+        });
+      }
 
       const userMessageCount = allMessages.filter((m) => m.role === 'user').length;
       const newAchievementIds = checkAchievements(currentCompanion, userMessageCount);

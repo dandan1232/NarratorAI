@@ -308,6 +308,8 @@ function TasksTab({
 
 // ============ Character Card Tab ============
 
+const FACT_LIMIT = 30;
+
 function CharacterCardTab({
   memory,
   characterCard,
@@ -316,33 +318,48 @@ function CharacterCardTab({
   characterCard: Companion['characterCard'];
 }) {
   const categories = [
-    { key: 'identity', label: '身份', icon: '👤', items: memory.revealedFacts.filter((f) => f.category === 'identity') },
-    { key: 'preference', label: '喜好', icon: '💜', items: memory.revealedFacts.filter((f) => f.category === 'preference') },
-    { key: 'innerWorld', label: '心事', icon: '💭', items: memory.revealedFacts.filter((f) => f.category === 'innerWorld') },
-    { key: 'habit', label: '习惯', icon: '🔄', items: memory.revealedFacts.filter((f) => f.category === 'habit') },
+    { key: 'identity', label: '身份', icon: '👤', barColor: 'bg-blue-400', items: memory.revealedFacts.filter((f) => f.category === 'identity') },
+    { key: 'preference', label: '喜好', icon: '💜', barColor: 'bg-purple-400', items: memory.revealedFacts.filter((f) => f.category === 'preference') },
+    { key: 'innerWorld', label: '心事', icon: '💭', barColor: 'bg-pink-400', items: memory.revealedFacts.filter((f) => f.category === 'innerWorld') },
+    { key: 'habit', label: '习惯', icon: '🔄', barColor: 'bg-green-400', items: memory.revealedFacts.filter((f) => f.category === 'habit') },
   ];
 
   const totalCollected = memory.revealedFacts.length;
+  const recentEmotions = memory.emotionalMemories.slice(-10).reverse();
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
-      {/* Archetype */}
+      {/* Overall Progress */}
       <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100">
-        <div className="text-xs text-purple-500 mb-1">人格原型</div>
-        <div className="text-sm font-medium text-purple-700">{characterCard.archetype}</div>
-        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          已收集 {totalCollected} 条信息
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs text-purple-500">人格原型</div>
+          <span className="text-xs font-medium text-purple-600">{totalCollected} / {FACT_LIMIT}</span>
+        </div>
+        <div className="text-sm font-medium text-purple-700 mb-2">{characterCard.archetype}</div>
+        <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${(totalCollected / FACT_LIMIT) * 100}%` }}
+            transition={{ duration: 0.8 }}
+          />
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="space-y-3">
+      {/* Categories with mini progress */}
+      <div className="space-y-2 mb-4">
         {categories.map((cat) => (
           <div key={cat.key} className="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1.5">
               <span>{cat.icon}</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{cat.label}</span>
               <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">{cat.items.length}</span>
+            </div>
+            <div className="h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
+              <div
+                className={`h-full rounded-full ${cat.barColor}`}
+                style={{ width: `${Math.min(100, (cat.items.length / 10) * 100)}%` }}
+              />
             </div>
             {cat.items.length === 0 ? (
               <div className="text-xs text-gray-300 italic">尚未发现</div>
@@ -362,14 +379,46 @@ function CharacterCardTab({
         ))}
       </div>
 
+      {/* Emotion Timeline */}
+      {recentEmotions.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">情绪轨迹</div>
+          <div className="space-y-1.5">
+            {recentEmotions.map((emo) => (
+              <div key={emo.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <span className="text-base shrink-0">{emotionEmoji[emo.emotion] || '😐'}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300 flex-1 truncate">{emo.content}</span>
+                <span className="text-[10px] text-gray-400 shrink-0">
+                  {new Date(emo.timestamp).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Session Summaries */}
       {memory.sessionSummaries.length > 0 && (
-        <div className="mt-4">
-          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-2">近期记忆</div>
+        <div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">会话记忆</div>
           <div className="space-y-2">
-            {memory.sessionSummaries.slice(-3).map((s) => (
-              <div key={s.id} className="p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-600 dark:text-gray-300">
-                {s.summary}
+            {memory.sessionSummaries.slice(-3).reverse().map((s) => (
+              <div key={s.id} className="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div className="text-xs text-gray-600 dark:text-gray-300 mb-1">{s.summary}</div>
+                {s.keyEvents.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {s.keyEvents.map((event, i) => (
+                      <span key={i} className="px-1.5 py-0.5 rounded bg-blue-50 text-[10px] text-blue-600">
+                        {event}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {s.emotionTrend && (
+                  <div className="text-[10px] text-gray-400 mt-1.5">
+                    情绪趋势: {s.emotionTrend}
+                  </div>
+                )}
               </div>
             ))}
           </div>

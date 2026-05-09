@@ -286,26 +286,28 @@ export const useAppStore = create<AppStore>()(
 
       addRevealedFact: (companionId, fact) =>
         set((state) => ({
-          companions: state.companions.map((c: Companion) =>
-            c.id === companionId
-              ? {
-                  ...c,
-                  memory: {
-                    ...c.memory,
-                    revealedFacts: [...c.memory.revealedFacts, fact],
-                  },
-                }
-              : c
-          ),
+          companions: state.companions.map((c: Companion) => {
+            if (c.id !== companionId) return c;
+            if (c.memory.revealedFacts.length >= 30) return c;
+            return {
+              ...c,
+              memory: {
+                ...c.memory,
+                revealedFacts: [...c.memory.revealedFacts, fact],
+              },
+            };
+          }),
           currentCompanion:
             state.currentCompanion?.id === companionId
-              ? {
-                  ...state.currentCompanion,
-                  memory: {
-                    ...state.currentCompanion.memory,
-                    revealedFacts: [...state.currentCompanion.memory.revealedFacts, fact],
-                  },
-                }
+              ? state.currentCompanion.memory.revealedFacts.length >= 30
+                ? state.currentCompanion
+                : {
+                    ...state.currentCompanion,
+                    memory: {
+                      ...state.currentCompanion.memory,
+                      revealedFacts: [...state.currentCompanion.memory.revealedFacts, fact],
+                    },
+                  }
               : state.currentCompanion,
         })),
 
