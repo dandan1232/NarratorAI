@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Copy,
   Trash2,
+  X,
 } from 'lucide-react';
 import { Message, RevealedFact } from '../types';
 import { useSticker } from '../hooks/useSticker';
@@ -98,6 +99,8 @@ export default function ChatPage() {
   const [contextMenu, setContextMenu] = useState<{ messageId: string; x: number; y: number; content: string } | null>(null);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [pendingImage, setPendingImage] = useState<string | null>(null); // base64 data URL
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -240,10 +243,13 @@ export default function ChatPage() {
       content: sendText,
       role: 'user',
       timestamp: Date.now(),
+      imageUrl: pendingImage || undefined,
     };
 
     addMessage(currentSession.id, userMessage);
+    const imageToSend = pendingImage;
     setInputText('');
+    setPendingImage(null);
     setQuickReplies([]);
     setIsTyping(true);
 
@@ -284,6 +290,7 @@ export default function ChatPage() {
       messages.push({
         role: 'user',
         content: sendText,
+        ...(imageToSend && { image: imageToSend }),
       });
 
       const responseText = await mimoClient.chat(messages, systemPrompt);
@@ -442,6 +449,21 @@ export default function ChatPage() {
     setShowEmojiPicker(false);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setPendingImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const toggleRecording = () => {
     setIsRecording(!isRecording);
   };
@@ -554,6 +576,16 @@ export default function ChatPage() {
                       )}
 
                       <p className="whitespace-pre-wrap">{message.content}</p>
+
+                      {message.imageUrl && (
+                        <div className="mt-2">
+                          <img
+                            src={message.imageUrl}
+                            alt="图片"
+                            className="max-w-[240px] max-h-[240px] rounded-lg shadow-sm"
+                          />
+                        </div>
+                      )}
 
                       {message.stickerUrl && (
                         <div className="mt-3">
@@ -671,6 +703,7 @@ export default function ChatPage() {
 
               <div className="absolute right-2 bottom-2 flex items-center gap-1">
                 <button
+                  onClick={() => fileInputRef.current?.click()}
                   className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   title="发送图片"
                 >
@@ -725,6 +758,39 @@ export default function ChatPage() {
             </p>
           </div>
         </motion.div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageSelect}
+        />
+
+        {/* Image Preview */}
+        <AnimatePresence>
+          {pendingImage && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mx-4 mb-2 relative inline-block"
+            >
+              <img
+                src={pendingImage}
+                alt="待发送图片"
+                className="max-h-32 rounded-xl border border-gray-200 dark:border-gray-600"
+              />
+              <button
+                onClick={() => setPendingImage(null)}
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Emoji Picker */}
         <AnimatePresence>

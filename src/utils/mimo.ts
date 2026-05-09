@@ -5,6 +5,7 @@ const MIMO_TTS_PROXY_PATH = '/mimo-tts';
 export interface MimoMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  image?: string; // base64 data URL
 }
 
 export interface MimoResponse {
@@ -51,22 +52,41 @@ class MimoClient {
     return response.json();
   }
 
-  // 对话补全 - 使用 MiMo-V2.5-Pro
+  // 对话补全 - 使用 MiMo-V2.5（支持多模态）
   async chat(
     messages: MimoMessage[],
     systemPrompt?: string,
-    model: string = 'mimo-v2.5-pro'
+    model: string = 'mimo-v2.5'
   ): Promise<string> {
-    // 构建消息数组，确保格式正确
-    const formattedMessages = messages.map(msg => ({
-      role: msg.role,
-      content: [
+    // 构建消息数组，支持图片
+    const formattedMessages = messages.map(msg => {
+      const content: any[] = [
         {
           type: 'text',
           text: msg.content,
         },
-      ],
-    }));
+      ];
+
+      if (msg.image) {
+        // 提取 base64 数据和 MIME 类型
+        const match = msg.image.match(/^data:(.*?);base64,(.*)$/);
+        if (match) {
+          content.unshift({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: match[1],
+              data: match[2],
+            },
+          });
+        }
+      }
+
+      return {
+        role: msg.role,
+        content,
+      };
+    });
 
     const body: any = {
       model,

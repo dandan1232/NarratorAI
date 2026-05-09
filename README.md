@@ -66,7 +66,7 @@
 | 动画 | Framer Motion |
 | 图标 | Lucide React |
 | 路由 | React Router 6 |
-| AI 接口 | MiMo AI API (对话 / TTS / 声音克隆) |
+| AI 接口 | MiMo AI API (MiMo-V2.5 多模态对话 / TTS / 声音克隆) |
 
 ## 快速开始
 
@@ -150,7 +150,7 @@ src/
 
 | 功能 | 代理路径 | 目标路径 | 模型 |
 |------|----------|----------|------|
-| 对话 | `/mimo/v1/messages` | `/anthropic/v1/messages` | mimo-v2.5-pro |
+| 对话 | `/mimo/v1/messages` | `/anthropic/v1/messages` | mimo-v2.5 |
 | 语音合成 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts |
 | 声音克隆 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts-voiceclone |
 | 声音设计 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts-voicedesign |

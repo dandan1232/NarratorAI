@@ -63,6 +63,7 @@ export interface Message {
   audioUrl?: string;
   isPlaying?: boolean;
   stickerUrl?: string;
+  imageUrl?: string;
 }
 
 export type EmotionType =
