@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppStore } from './stores/useAppStore';
 import WelcomePage from './pages/WelcomePage';
 import SetupPage from './pages/SetupPage';
@@ -12,7 +12,6 @@ import Layout from './components/Layout';
 
 function App() {
   const { isInitialized, setCurrentView, companions, currentCompanion, setCurrentCompanion, sessions, setCurrentSession } = useAppStore();
-  const navigate = useNavigate();
   const location = useLocation();
 
   // Sync currentView with URL path
@@ -40,13 +39,6 @@ function App() {
     }
   }, [isInitialized, currentCompanion, companions, sessions, setCurrentCompanion, setCurrentSession]);
 
-  // Auto-navigate to chat if setup is complete and on root
-  useEffect(() => {
-    if (isInitialized && location.pathname === '/' && companions.length > 0) {
-      navigate('/chat');
-    }
-  }, [isInitialized, location.pathname, companions.length, navigate]);
-
   // Drive mode is full-screen, outside Layout
   if (location.pathname === '/drive') {
     return isInitialized ? <DrivePage /> : <Navigate to="/" replace />;
@@ -57,13 +49,7 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={
-            !isInitialized ? (
-              <WelcomePage />
-            ) : (
-              <Navigate to="/setup" replace />
-            )
-          }
+          element={<WelcomePage />}
         />
         <Route
           path="/setup"
