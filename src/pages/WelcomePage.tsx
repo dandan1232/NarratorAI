@@ -5,10 +5,17 @@ import { Heart, Sparkles, MessageCircle, ArrowRight } from 'lucide-react';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
-  const { setInitialized, setCurrentView, setUser } = useAppStore();
+  const { setInitialized, setCurrentView, setUser, companions, isInitialized } = useAppStore();
 
   const handleStart = () => {
-    // Initialize with default user
+    // 如果已经有伴侣，直接跳转到聊天页面
+    if (isInitialized && companions.length > 0) {
+      setCurrentView('chat');
+      navigate('/chat');
+      return;
+    }
+
+    // 否则初始化并跳转到设置页面
     setUser({
       id: 'user-1',
       nickname: '',
@@ -105,11 +112,11 @@ export default function WelcomePage() {
             onClick={handleStart}
             className="group inline-flex items-center gap-3 px-6 py-3 md:px-8 md:py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-full font-semibold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
           >
-            开始旅程
+            {isInitialized && companions.length > 0 ? '开始聊天' : '开始旅程'}
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
           <p className="mt-3 md:mt-4 text-xs md:text-sm text-gray-500 dark:text-gray-400">
-            点击开始，遇见你的专属陪伴伙伴
+            {isInitialized && companions.length > 0 ? '继续与你的陪伴伙伴对话' : '点击开始，遇见你的专属陪伴伙伴'}
           </p>
         </motion.div>
 
