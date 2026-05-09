@@ -32,9 +32,6 @@ export default function Sidebar() {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setIsCollapsed(true);
-      }
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -118,8 +115,8 @@ export default function Sidebar() {
       <motion.aside
         initial={false}
         animate={{
-          width: isMobile ? 280 : (isCollapsed ? 80 : 280),
-          x: isMobile ? (isMobileOpen ? 0 : -280) : 0,
+          width: isMobile ? 240 : (isCollapsed ? 80 : 280),
+          x: isMobile ? (isMobileOpen ? 0 : -240) : 0,
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className={`${
@@ -130,7 +127,7 @@ export default function Sidebar() {
         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <AnimatePresence>
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -188,7 +185,7 @@ export default function Sidebar() {
               >
                 <item.icon className={`w-5 h-5 ${isActive ? 'text-orange-500 dark:text-orange-400' : ''}`} />
                 <AnimatePresence>
-                  {!isCollapsed && (
+                  {(!isCollapsed || isMobile) && (
                     <motion.span
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
@@ -207,7 +204,7 @@ export default function Sidebar() {
         {/* Companion List */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
           <AnimatePresence>
-            {!isCollapsed && (
+            {(!isCollapsed || isMobile) && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -286,7 +283,7 @@ export default function Sidebar() {
           </AnimatePresence>
 
           {/* Collapsed companion icons */}
-          {isCollapsed && (
+          {isCollapsed && !isMobile && (
             <div className="space-y-2">
               {companions.slice(0, 3).map((companion) => (
                 <button
