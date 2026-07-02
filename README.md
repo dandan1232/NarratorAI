@@ -2,7 +2,23 @@
 
 > 一个有记忆、有性格、会成长的 AI 情感陪伴系统
 
-基于 [CyberPersona](https://github.com/harrylarryxyz/CyberPersona) 设计理念，构建有温度的赛博陪伴体验。角色在对话中逐步成型（量子态坍缩），好感度随互动增长，记忆跨会话保留。
+设计理念如下，构建有温度的赛博陪伴体验。角色在对话中逐步成型（量子态坍缩），好感度随互动增长，记忆跨会话保留。
+- **量子态角色生成** — 种子只给「轴」不给「点」，角色通过对话自然坍缩出完整人格（代码层硬约束：validator 拒绝 + 强制清空，物理隔离量子态泄漏）
+- **大五人格系统** — L2 层 Big Five（开放性/尽责性/外向性/宜人性/神经质），OCEAN 标准排序，心理学理论支撑
+- **五维度关系系统** — L3 层（信任感/安全感/亲密感/依恋度/占有欲），动态积分制 0-100
+- **三阶段调制** — `effective_Δ = raw_Δ_enum × l2_factor × mood_factor`，枚举化防幻觉
+- **压力系统** — 独立短期状态，通过 mood_factor 影响所有关系维度变化
+- **情绪深度** — emotionHistory / emotionalMemories / moodFactors，情绪驱动行为
+- **角色卡系统** — characterCard 统一数据源，6 类量子态动态 KV（身份/外形/性格/喜好/心事/习惯），成就驱动收集
+- **世界观同步** — 天气感知（wttr.in）、节日感知、时间感知（7 时段），位置量子态坍缩
+- **五种开场策略** — 情绪宣泄 / 感官分享 / 薛定谔提问 / 假装发错 / 观测者静默，脚本随机分配
+- **记忆系统** — 跨 session 摘要，角色记忆（revealedFacts，setting 不可变 / experience 可修订）
+- **语音** — Agent 直接调用 mimo-tts（voice design → clone 工作流）
+- **图片** — Agent 直接调用 image-api，gpt-image-2 生成 + 参考照片 edit API
+- **表情包** — tangdouz API 免费表情包搜索，情绪驱动
+- **游戏化** — 18 个成就 + 6 张角色卡成就，好感度系统（0-1000），每日任务，收集系统
+- **Cheat 模式** — `cheat on/off` 控制信息展示（回合小结、聊天建议、详细总结）
+- **Debug 模式** — `debug on/off` + 丰富的调试命令
 
 <div align="center">
 
