@@ -40,6 +40,7 @@ import {
   parseTurnJson,
   validateStructuredTurnResult,
 } from '../utils/turnEngine';
+import { collapseCityFromText, fetchWttrWeather } from '../utils/worldSync';
 import { AffectionDisplay } from '../components/AffectionDisplay';
 import { RelationshipPanel } from '../components/RelationshipPanel';
 import { CollectionToast } from '../components/CollectionToast';
@@ -226,9 +227,20 @@ export default function ChatPage() {
     // Preserve user-set weather and location, update auto-detected fields
     updateWorldState(currentCompanion.id, {
       timeOfDay: newWorldState.timeOfDay,
+      hour: newWorldState.hour,
       season: newWorldState.season,
       dayOfWeek: newWorldState.dayOfWeek,
+      festival: newWorldState.festival,
     });
+
+    if (currentCompanion.worldState.locationCollapsed && currentCompanion.worldState.cityName) {
+      fetchWttrWeather(currentCompanion.worldState.cityName).then((weatherResult) => {
+        if (!weatherResult) return;
+        updateWorldState(currentCompanion.id, {
+          weather: weatherResult.weather,
+        });
+      });
+    }
 
     // Stress decay
     const { stressLevel, lastStressDecay } = calculateStressDecay(
@@ -247,7 +259,7 @@ export default function ChatPage() {
     if (shouldResetDailyTasks(currentCompanion.affection.lastDailyReset)) {
       resetDailyTasks(currentCompanion.id);
     }
-  }, [currentCompanion?.id]);
+  }, [currentCompanion?.id, currentCompanion?.worldState?.cityName]);
 
   const handleSend = async (text?: string) => {
     const sendText = text || inputText;
@@ -267,6 +279,23 @@ export default function ChatPage() {
     setPendingImage(null);
     setQuickReplies([]);
     setIsTyping(true);
+
+    const collapsedCity = currentCompanion.worldState.locationCollapsed
+      ? null
+      : collapseCityFromText(sendText);
+    if (collapsedCity) {
+      updateWorldState(currentCompanion.id, {
+        cityName: collapsedCity,
+        locationCollapsed: true,
+        location: 'traveling',
+      });
+      fetchWttrWeather(collapsedCity).then((weatherResult) => {
+        if (!weatherResult) return;
+        updateWorldState(currentCompanion.id, {
+          weather: weatherResult.weather,
+        });
+      });
+    }
 
     try {
       const systemPrompt = buildStructuredTurnPrompt(currentCompanion);
@@ -672,70 +701,93 @@ export default function ChatPage() {
                       message.role === 'user' ? 'justify-end' : 'justify-start'
                     }`}
                   >
-                    <div
-                      className={`message-bubble ${
-                        message.role === 'user' ? 'user' : 'assistant'
-                      } cursor-pointer select-text`}
-                      onContextMenu={(e) => handleContextMenu(e, message)}
-                    >
-                      {message.role === 'assistant' && (
-                        <div className="flex items-center gap-2 mb-2">
+                    {message.role === 'assistant' ? (
+                      <div className="flex items-start gap-2 max-w-[86%]">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 dark:from-orange-800 dark:to-amber-800 flex items-center justify-center text-lg shrink-0 overflow-hidden">
                           {currentCompanion.avatar.startsWith('data:') ? (
-                            <img src={currentCompanion.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                            <img src={currentCompanion.avatar} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-lg">{currentCompanion.avatar}</span>
+                            currentCompanion.avatar
                           )}
-                          <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                            {currentCompanion.name}
-                          </span>
                         </div>
-                      )}
+                        <div className="message-stack min-w-0">
+                          <div className="flex items-center gap-2 mb-1 px-1">
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                              {currentCompanion.name}
+                            </span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              {new Date(message.timestamp).toLocaleTimeString('zh-CN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          <div
+                            className="message-bubble assistant cursor-pointer select-text"
+                            onContextMenu={(e) => handleContextMenu(e, message)}
+                          >
+                            <p className="whitespace-pre-wrap">{message.content}</p>
 
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                            {message.imageUrl && (
+                              <div className="mt-2">
+                                <img
+                                  src={message.imageUrl}
+                                  alt="图片"
+                                  className="max-w-[240px] max-h-[240px] rounded-lg shadow-sm"
+                                />
+                              </div>
+                            )}
 
-                      {message.imageUrl && (
-                        <div className="mt-2">
-                          <img
-                            src={message.imageUrl}
-                            alt="图片"
-                            className="max-w-[240px] max-h-[240px] rounded-lg shadow-sm"
-                          />
+                            {message.audioUrl && (
+                              <div className="mt-2">
+                                <button className="flex items-center gap-2 text-sm text-orange-500 hover:text-orange-600">
+                                  <Play className="w-4 h-4" />
+                                  播放语音
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {message.stickerUrl && (
+                            <div className="mt-2 inline-flex max-w-[220px] rounded-2xl rounded-tl-md bg-white dark:bg-gray-800 p-2 shadow-sm border border-gray-100 dark:border-gray-700">
+                              <img
+                                src={message.stickerUrl}
+                                alt="表情包"
+                                className="max-w-[180px] max-h-[180px] rounded-xl object-contain"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      {message.stickerUrl && (
-                        <div className="mt-3">
-                          <img
-                            src={message.stickerUrl}
-                            alt="表情包"
-                            className="max-w-[200px] max-h-[200px] rounded-lg shadow-sm"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {message.audioUrl && (
-                        <div className="mt-2">
-                          <button className="flex items-center gap-2 text-sm text-orange-500 hover:text-orange-600">
-                            <Play className="w-4 h-4" />
-                            播放语音
-                          </button>
-                        </div>
-                      )}
-
-                      <div
-                        className={`text-xs mt-2 ${
-                          message.role === 'user' ? 'text-white/70' : 'text-gray-400'
-                        }`}
-                      >
-                        {new Date(message.timestamp).toLocaleTimeString('zh-CN', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="message-stack flex w-fit max-w-[86%] flex-col items-end gap-1">
+                        <div
+                          className="message-bubble user cursor-pointer select-text"
+                          onContextMenu={(e) => handleContextMenu(e, message)}
+                        >
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+
+                          {message.imageUrl && (
+                            <div className="mt-2">
+                              <img
+                                src={message.imageUrl}
+                                alt="图片"
+                                className="max-w-[240px] max-h-[240px] rounded-lg shadow-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="px-1 text-xs text-gray-400 dark:text-gray-500">
+                          {new Date(message.timestamp).toLocaleTimeString('zh-CN', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 </div>
               );
@@ -749,29 +801,35 @@ export default function ChatPage() {
               animate={{ opacity: 1, y: 0 }}
               className="flex justify-start"
             >
-              <div className="message-bubble assistant">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-start gap-2 max-w-[86%]">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 dark:from-orange-800 dark:to-amber-800 flex items-center justify-center text-lg shrink-0 overflow-hidden">
                   {currentCompanion.avatar.startsWith('data:') ? (
-                    <img src={currentCompanion.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                    <img src={currentCompanion.avatar} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-lg">{currentCompanion.avatar}</span>
+                    currentCompanion.avatar
                   )}
-                  <span className="text-sm font-medium text-gray-600">
-                    {currentCompanion.name}
-                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                <div className="message-stack min-w-0">
+                  <div className="mb-1 px-1">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                      {currentCompanion.name}
+                    </span>
                   </div>
-                  {isStickerLoading && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      <span>找表情包中...</span>
+                  <div className="message-bubble assistant">
+                    <div className="flex items-center gap-2">
+                      <div className="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                      {isStickerLoading && (
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>找表情包中...</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -810,35 +868,62 @@ export default function ChatPage() {
         >
           <div className="flex items-end gap-4 max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              <textarea
-                ref={inputRef}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="输入你想说的话..."
-                className="w-full px-4 py-3 pr-12 rounded-2xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none resize-none transition-colors bg-white dark:bg-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                rows={1}
-                style={{ minHeight: '48px', maxHeight: '120px' }}
-              />
+              <div className="flex items-end rounded-2xl border-2 border-orange-200 bg-white transition-colors focus-within:border-orange-400 dark:border-gray-600 dark:bg-gray-700 dark:focus-within:border-orange-500">
+                <textarea
+                  ref={inputRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="输入你想说的话..."
+                  className="min-w-0 flex-1 resize-none bg-transparent px-4 py-3 text-gray-900 outline-none placeholder-gray-400 dark:text-gray-100 dark:placeholder-gray-500"
+                  rows={1}
+                  style={{ minHeight: '48px', maxHeight: '120px' }}
+                />
 
-              <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  title="发送图片"
-                >
-                  <Image className="w-5 h-5 text-gray-400" />
-                </button>
-                <button
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    showEmojiPicker ? 'bg-orange-100 dark:bg-orange-900/40' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                  title="表情"
-                >
-                  <Smile className={`w-5 h-5 ${showEmojiPicker ? 'text-orange-500' : 'text-gray-400'}`} />
-                </button>
+                <div className="flex items-center gap-1 pb-2 pr-3">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    title="发送图片"
+                  >
+                    <Image className="w-5 h-5 text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                      showEmojiPicker ? 'bg-orange-100 dark:bg-orange-900/40' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    title="表情"
+                  >
+                    <Smile className={`w-5 h-5 ${showEmojiPicker ? 'text-orange-500' : 'text-gray-400'}`} />
+                  </button>
+                </div>
               </div>
+
+              {/* Emoji Picker */}
+              <AnimatePresence>
+                {showEmojiPicker && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    className="absolute bottom-full right-0 z-30 mb-2 w-[292px] max-w-[calc(100vw-2rem)] p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700"
+                  >
+                    <div className="absolute -bottom-1.5 right-5 w-3 h-3 rotate-45 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700" />
+                    <div className="grid grid-cols-8 gap-1">
+                      {EMOJI_LIST.map((emoji, i) => (
+                        <button
+                          key={i}
+                          onClick={() => insertEmoji(emoji)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-lg"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="flex items-center gap-2">
@@ -908,30 +993,6 @@ export default function ChatPage() {
               >
                 <X className="w-3.5 h-3.5" />
               </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Emoji Picker */}
-        <AnimatePresence>
-          {showEmojiPicker && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="mx-4 mb-2 p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700"
-            >
-              <div className="grid grid-cols-8 gap-1">
-                {EMOJI_LIST.map((emoji, i) => (
-                  <button
-                    key={i}
-                    onClick={() => insertEmoji(emoji)}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-lg"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -48,6 +48,11 @@ function migrateCompanion(companion: any): Companion {
     affection = { ...affection, lastDailyReset: Date.now() };
   }
 
+  const worldState = {
+    ...createInitialWorldState(),
+    ...(companion.worldState || {}),
+  };
+
   return {
     ...companion,
     characterCard: companion.characterCard || createInitialCharacterCard(),
@@ -57,7 +62,7 @@ function migrateCompanion(companion: any): Companion {
     emotionalDepth,
     openingStrategy: companion.openingStrategy || getRandomOpeningStrategy(),
     achievements: companion.achievements || createInitialAchievementSystem(),
-    worldState: companion.worldState || createInitialWorldState(),
+    worldState,
   };
 }
 

@@ -317,7 +317,14 @@ export interface MoodFactors {
 // ==================== Phase 3: 世界观同步 ====================
 
 // 时间段
-export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night' | 'late_night';
+export type TimeOfDay =
+  | 'early_morning'
+  | 'morning'
+  | 'noon'
+  | 'afternoon'
+  | 'evening'
+  | 'night'
+  | 'late_night';
 
 // 季节
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -337,10 +344,14 @@ export type StressSource = 'negative_emotion' | 'late_night' | 'long_session';
 // 世界状态
 export interface WorldState {
   timeOfDay: TimeOfDay;      // 自动
+  hour: number;               // Asia/Shanghai 精确小时
   season: Season;             // 自动
   dayOfWeek: DayOfWeek;       // 自动
-  weather: Weather;           // 用户设置
+  weather: Weather;           // 位置坍缩后自动，可手动覆盖
   location: Location;         // 用户设置
+  cityName?: string;          // 用户首次提到城市后坍缩
+  locationCollapsed?: boolean;
+  festival?: string | null;   // 固定节日/农历节日
 }
 
 // ==================== Phase 2: 开场策略 ====================

@@ -50,15 +50,6 @@ const tabs: { key: TabKey; label: string; icon: typeof Heart }[] = [
 export function RelationshipPanel({ companion, onClose }: RelationshipPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('relation');
   const { relationshipSystem, emotionalDepth, affection, achievements, memory, characterCard } = companion;
-  const { addAffectionPoints, completeDailyTask } = useAppStore();
-
-  const handleCompleteTask = (taskId: string, reward: number) => {
-    const task = affection.dailyTasks.find((t) => t.id === taskId);
-    if (task && !task.completed) {
-      completeDailyTask(companion.id, taskId);
-      addAffectionPoints(companion.id, reward);
-    }
-  };
 
   return (
     <motion.div
@@ -111,7 +102,6 @@ export function RelationshipPanel({ companion, onClose }: RelationshipPanelProps
             <TasksTab
               key="tasks"
               tasks={affection.dailyTasks}
-              onComplete={handleCompleteTask}
             />
           )}
           {activeTab === 'card' && (
@@ -257,17 +247,20 @@ function RelationTab({
 
 function TasksTab({
   tasks,
-  onComplete,
 }: {
   tasks: Companion['affection']['dailyTasks'];
-  onComplete: (taskId: string, reward: number) => void;
 }) {
   const completedCount = tasks.filter((t) => t.completed).length;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-gray-600 dark:text-gray-300">今日进度</span>
+        <div>
+          <span className="text-sm text-gray-600 dark:text-gray-300">今日进度</span>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+            通过聊天内容自动完成
+          </p>
+        </div>
         <span className="text-sm font-medium text-orange-600">
           {completedCount} / {tasks.length}
         </span>
@@ -275,14 +268,12 @@ function TasksTab({
 
       <div className="space-y-2">
         {tasks.map((task) => (
-          <button
+          <div
             key={task.id}
-            onClick={() => onComplete(task.id, task.reward)}
-            disabled={task.completed}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left ${
               task.completed
                 ? 'bg-green-50 border border-green-100'
-                : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-orange-50 border border-transparent hover:border-orange-100'
+                : 'bg-gray-50 dark:bg-gray-700/50 border-transparent'
             }`}
           >
             {task.completed ? (
@@ -299,7 +290,7 @@ function TasksTab({
             <span className={`text-xs font-medium shrink-0 ${task.completed ? 'text-green-500' : 'text-orange-500'}`}>
               +{task.reward}
             </span>
-          </button>
+          </div>
         ))}
       </div>
     </motion.div>
@@ -525,14 +516,14 @@ function WorldTab({ companion }: { companion: Companion }) {
         <div className="flex items-center gap-2 mb-3">
           <Globe className="w-5 h-5 text-blue-500" />
           <span className="font-medium text-gray-700 dark:text-gray-200">世界状态</span>
-          <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">自动感知</span>
+          <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">时间自动</span>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20">
             <div className="text-xs text-blue-500 mb-0.5">时间</div>
             <div className="font-medium text-gray-700 dark:text-gray-200">
-              {TIME_OF_DAY_NAMES[worldState.timeOfDay]}
+              {TIME_OF_DAY_NAMES[worldState.timeOfDay]} · {worldState.hour}:00
             </div>
           </div>
           <div className="p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20">
@@ -545,13 +536,21 @@ function WorldTab({ companion }: { companion: Companion }) {
             <div className="text-xs text-purple-500 mb-0.5">
               {worldState.dayOfWeek === 'weekend' ? '周末' : '工作日'}
             </div>
+            {worldState.festival && (
+              <div className="font-medium text-gray-700 dark:text-gray-200">
+                {worldState.festival}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Weather selector */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">天气</div>
+        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">天气</div>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+          首次提到城市后坍缩，并基于 wttr.in 自动同步 15 分钟缓存
+        </p>
         <div className="grid grid-cols-3 gap-1.5">
           {WEATHER_OPTIONS.map((opt) => (
             <button
@@ -572,7 +571,10 @@ function WorldTab({ companion }: { companion: Companion }) {
 
       {/* Location selector */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">位置</div>
+        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">位置</div>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+          城市：{worldState.locationCollapsed && worldState.cityName ? worldState.cityName : '未坍缩'}
+        </p>
         <div className="grid grid-cols-3 gap-1.5">
           {LOCATION_OPTIONS.map((opt) => (
             <button

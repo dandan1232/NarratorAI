@@ -163,19 +163,88 @@ export function createInitialWorldState(): WorldState {
     ...getWorldState(),
     weather: 'sunny',
     location: 'home',
+    cityName: undefined,
+    locationCollapsed: false,
   };
 }
 
-// 自动获取世界状态（时间、季节、星期）
+function getShanghaiDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    weekday: 'short',
+  }).formatToParts(date);
+
+  const valueOf = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value || '';
+
+  return {
+    month: Number(valueOf('month')),
+    day: Number(valueOf('day')),
+    hour: Number(valueOf('hour')) % 24,
+    weekday: valueOf('weekday'),
+  };
+}
+
+const FIXED_FESTIVALS: Record<string, string> = {
+  '1-1': '元旦',
+  '2-14': '情人节',
+  '3-8': '妇女节',
+  '3-12': '植树节',
+  '4-1': '愚人节',
+  '5-1': '劳动节',
+  '5-4': '青年节',
+  '6-1': '儿童节',
+  '7-1': '建党节',
+  '8-1': '建军节',
+  '9-10': '教师节',
+  '10-1': '国庆节',
+  '10-31': '万圣节',
+  '11-11': '双十一',
+  '12-24': '平安夜',
+  '12-25': '圣诞节',
+};
+
+const LUNAR_FESTIVALS: Record<string, string> = {
+  '1-1': '春节',
+  '1-15': '元宵节',
+  '5-5': '端午节',
+  '8-15': '中秋节',
+};
+
+function getLunarFestival(date = new Date()): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', {
+      month: 'numeric',
+      day: 'numeric',
+    }).formatToParts(date);
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+    if (!month || !day) return null;
+    return LUNAR_FESTIVALS[`${Number(month)}-${Number(day)}`] || null;
+  } catch {
+    return null;
+  }
+}
+
+function getFestival(month: number, day: number, date = new Date()): string | null {
+  return FIXED_FESTIVALS[`${month}-${day}`] || getLunarFestival(date);
+}
+
+// 自动获取世界状态（上海时区时间、季节、星期、节日）
 export function getWorldState(): WorldState {
   const now = new Date();
-  const hour = now.getHours();
-  const month = now.getMonth() + 1;
-  const day = now.getDay();
+  const { month, day, hour, weekday } = getShanghaiDateParts(now);
 
   let timeOfDay: TimeOfDay;
-  if (hour >= 6 && hour < 12) timeOfDay = 'morning';
-  else if (hour >= 12 && hour < 18) timeOfDay = 'afternoon';
+  if (hour >= 5 && hour < 8) timeOfDay = 'early_morning';
+  else if (hour >= 8 && hour < 11) timeOfDay = 'morning';
+  else if (hour >= 11 && hour < 13) timeOfDay = 'noon';
+  else if (hour >= 13 && hour < 18) timeOfDay = 'afternoon';
   else if (hour >= 18 && hour < 22) timeOfDay = 'evening';
   else if (hour >= 22 || hour < 2) timeOfDay = 'late_night';
   else timeOfDay = 'night';
@@ -186,20 +255,24 @@ export function getWorldState(): WorldState {
   else if (month >= 9 && month <= 11) season = 'autumn';
   else season = 'winter';
 
-  const dayOfWeek: DayOfWeek = (day === 0 || day === 6) ? 'weekend' : 'weekday';
+  const dayOfWeek: DayOfWeek = (weekday === '周日' || weekday === '周六') ? 'weekend' : 'weekday';
 
   return {
     timeOfDay,
+    hour,
     season,
     dayOfWeek,
     weather: 'sunny',
     location: 'home',
+    festival: getFestival(month, day, now),
   };
 }
 
 // 时间段名称
 export const TIME_OF_DAY_NAMES: Record<TimeOfDay, string> = {
+  early_morning: '清晨',
   morning: '早上',
+  noon: '中午',
   afternoon: '下午',
   evening: '晚上',
   night: '深夜',
@@ -240,12 +313,15 @@ export function getWorldGuide(worldState: WorldState): string {
   const weatherDesc = WEATHER_NAMES[worldState.weather];
   const locationDesc = LOCATION_NAMES[worldState.location];
   const dayDesc = worldState.dayOfWeek === 'weekend' ? '周末' : '工作日';
+  const cityDesc = worldState.locationCollapsed && worldState.cityName ? worldState.cityName : '未坍缩';
+  const festivalDesc = worldState.festival || '无';
 
   return `【当前世界】
-- 时间: ${timeDesc}
+- 时间: ${timeDesc}（Asia/Shanghai ${worldState.hour}:00）
 - 季节: ${seasonDesc}
+- 节日: ${festivalDesc}
 - 天气: ${weatherDesc}
-- 位置: ${locationDesc}
+- 位置: ${locationDesc}，城市: ${cityDesc}
 - ${dayDesc}`;
 }
 
@@ -253,6 +329,7 @@ export function getWorldGuide(worldState: WorldState): string {
 export function getTimeAwareGreeting(worldState: WorldState): string | null {
   const { timeOfDay } = worldState;
   switch (timeOfDay) {
+    case 'early_morning':
     case 'morning':
       return '早上好呀~昨晚睡得好吗？';
     case 'late_night':
