@@ -13,9 +13,9 @@ import {
   SEASON_NAMES,
 } from '../utils/characterAnalyzer';
 import { useAppStore } from '../stores/useAppStore';
-
 interface RelationshipPanelProps {
   companion: Companion;
+  userMessageCount: number;
   onClose: () => void;
 }
 
@@ -47,7 +47,7 @@ const tabs: { key: TabKey; label: string; icon: typeof Heart }[] = [
   { key: 'world', label: '世界', icon: Globe },
 ];
 
-export function RelationshipPanel({ companion, onClose }: RelationshipPanelProps) {
+export function RelationshipPanel({ companion, userMessageCount, onClose }: RelationshipPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('relation');
   const { relationshipSystem, emotionalDepth, affection, achievements, memory, characterCard } = companion;
 
@@ -102,6 +102,7 @@ export function RelationshipPanel({ companion, onClose }: RelationshipPanelProps
             <TasksTab
               key="tasks"
               tasks={affection.dailyTasks}
+              userMessageCount={userMessageCount}
             />
           )}
           {activeTab === 'card' && (
@@ -247,8 +248,10 @@ function RelationTab({
 
 function TasksTab({
   tasks,
+  userMessageCount,
 }: {
   tasks: Companion['affection']['dailyTasks'];
+  userMessageCount: number;
 }) {
   const completedCount = tasks.filter((t) => t.completed).length;
 
@@ -286,6 +289,22 @@ function TasksTab({
                 {task.name}
               </div>
               <div className="text-xs text-gray-400 dark:text-gray-500">{task.description}</div>
+              {task.id === 'deep' && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-[11px] text-gray-400 dark:text-gray-500 mb-1">
+                    <span>深入对话进度</span>
+                    <span>{Math.min(userMessageCount, 20)} / 20</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        task.completed ? 'bg-green-500' : 'bg-gradient-to-r from-orange-400 to-amber-500'
+                      }`}
+                      style={{ width: `${Math.min((userMessageCount / 20) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <span className={`text-xs font-medium shrink-0 ${task.completed ? 'text-green-500' : 'text-orange-500'}`}>
               +{task.reward}

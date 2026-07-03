@@ -45,6 +45,7 @@ import { AffectionDisplay } from '../components/AffectionDisplay';
 import { RelationshipPanel } from '../components/RelationshipPanel';
 import { CollectionToast } from '../components/CollectionToast';
 import { AchievementToast } from '../components/AchievementToast';
+import { TaskToast } from '../components/TaskToast';
 
 // 日期格式化
 function formatDateLabel(timestamp: number): string {
@@ -102,6 +103,7 @@ export default function ChatPage() {
   const [newFact, setNewFact] = useState<RevealedFact | null>(null);
   const [showPanel, setShowPanel] = useState(false);
   const [newAchievement, setNewAchievement] = useState<{ name: string; icon: string; reward: number } | null>(null);
+  const [newTask, setNewTask] = useState<{ name: string; reward: number } | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ messageId: string; x: number; y: number; content: string } | null>(null);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
@@ -508,6 +510,8 @@ export default function ChatPage() {
         if (task && !task.completed) {
           completeDailyTask(currentCompanion.id, taskId);
           addAffectionPoints(currentCompanion.id, task.reward);
+          setNewTask({ name: task.name, reward: task.reward });
+          setTimeout(() => setNewTask(null), 3000);
         }
       });
 
@@ -1009,6 +1013,11 @@ export default function ChatPage() {
           achievement={newAchievement}
           onDismiss={() => setNewAchievement(null)}
         />
+
+        <TaskToast
+          task={newTask}
+          onDismiss={() => setNewTask(null)}
+        />
       </div>
 
       {/* Scroll to Bottom Button */}
@@ -1060,6 +1069,7 @@ export default function ChatPage() {
         {showPanel && currentCompanion && (
           <RelationshipPanel
             companion={currentCompanion}
+            userMessageCount={currentSession?.messages.filter((m) => m.role === 'user').length || 0}
             onClose={() => setShowPanel(false)}
           />
         )}

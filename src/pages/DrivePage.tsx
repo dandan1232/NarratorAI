@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mic, MicOff, Send, Home } from 'lucide-react';
 import { Message } from '../types';
 import { mimoClient, MimoMessage } from '../utils/mimo';
+import { TaskToast } from '../components/TaskToast';
 import {
   buildSystemPrompt,
   calculateAffectionChange,
@@ -49,6 +50,7 @@ export default function DrivePage() {
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
+  const [newTask, setNewTask] = useState<{ name: string; reward: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -195,6 +197,8 @@ export default function DrivePage() {
         if (task && !task.completed) {
           completeDailyTask(currentCompanion.id, taskId);
           addAffectionPoints(currentCompanion.id, task.reward);
+          setNewTask({ name: task.name, reward: task.reward });
+          setTimeout(() => setNewTask(null), 3000);
         }
       });
 
@@ -491,6 +495,11 @@ export default function DrivePage() {
           )}
         </AnimatePresence>
       </div>
+
+      <TaskToast
+        task={newTask}
+        onDismiss={() => setNewTask(null)}
+      />
     </div>
   );
 }
