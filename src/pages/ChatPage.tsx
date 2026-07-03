@@ -20,12 +20,8 @@ import { Message, RevealedFact } from '../types';
 import { useSticker } from '../hooks/useSticker';
 import { mimoClient, MimoMessage } from '../utils/mimo';
 import {
-  buildSystemPrompt,
   calculateAffectionChange,
-  extractCharacterFacts,
   generateSessionSummary,
-  calculateRelationshipDelta,
-  detectEmotionFromText,
   updateEmotionalState,
   checkAchievements,
   checkCharacterCardAchievements,
@@ -36,6 +32,14 @@ import {
   detectTaskCompletion,
   shouldResetDailyTasks,
 } from '../utils/characterAnalyzer';
+import {
+  buildStructuredTurnPrompt,
+  calculateEffectiveDelta,
+  createFallbackTurnResult,
+  enumDeltaToNumber,
+  parseTurnJson,
+  validateStructuredTurnResult,
+} from '../utils/turnEngine';
 import { AffectionDisplay } from '../components/AffectionDisplay';
 import { RelationshipPanel } from '../components/RelationshipPanel';
 import { CollectionToast } from '../components/CollectionToast';
@@ -128,6 +132,8 @@ export default function ChatPage() {
     updateWorldState,
     completeDailyTask,
     resetDailyTasks,
+    updateCharacterCard,
+    modelConfig,
   } = useAppStore();
 
   // Auto-scroll to bottom
@@ -263,7 +269,7 @@ export default function ChatPage() {
     setIsTyping(true);
 
     try {
-      const systemPrompt = buildSystemPrompt(currentCompanion);
+      const systemPrompt = buildStructuredTurnPrompt(currentCompanion);
 
       // 过滤掉 greeting，保留后续对话
       const historyMessages = currentSession.messages
@@ -302,7 +308,21 @@ export default function ChatPage() {
         ...(imageToSend && { image: imageToSend }),
       });
 
-      const responseText = await mimoClient.chat(messages, systemPrompt);
+      let turnResult;
+      try {
+        const rawTurnResult = await mimoClient.chat(
+          messages,
+          systemPrompt,
+          modelConfig.model || 'mimo-v2.5',
+          modelConfig
+        );
+        turnResult = validateStructuredTurnResult(parseTurnJson(rawTurnResult));
+      } catch (turnError) {
+        console.error('Structured turn failed:', turnError);
+        turnResult = createFallbackTurnResult(sendText);
+      }
+
+      const responseText = turnResult.visibleText;
 
       const stickerUrl = await getStickerForText(responseText);
 
@@ -328,7 +348,12 @@ export default function ChatPage() {
       addAffectionPoints(currentCompanion.id, affectionChange);
 
       const allMessages = [...currentSession.messages, userMessage, assistantMessage];
-      const newFacts = await extractCharacterFacts(allMessages);
+      const newFacts = turnResult.memoryUpdate.revealedFactsAdd.map((fact) => ({
+        id: `fact-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        category: fact.category,
+        content: fact.content,
+        timestamp: Date.now(),
+      }));
       if (newFacts.length > 0) {
         newFacts.forEach((fact) => {
           addRevealedFact(currentCompanion.id, fact);
@@ -345,16 +370,23 @@ export default function ChatPage() {
       }
 
       // Phase 2 post-processing
-      const relationshipDelta = calculateRelationshipDelta(
-        sendText,
-        responseText,
-        currentCompanion.characterCard.basePersonality
-      );
+      const relationshipDelta = Object.fromEntries(
+        Object.entries(turnResult.stateDelta)
+          .map(([key, delta]) => [
+            key,
+            calculateEffectiveDelta(currentCompanion, key as any, delta),
+          ])
+          .filter(([, value]) => value !== 0)
+      ) as any;
       if (Object.keys(relationshipDelta).length > 0) {
         updateRelationshipDimensions(currentCompanion.id, relationshipDelta);
       }
 
-      const { emotion, intensity } = detectEmotionFromText(responseText);
+      const emotion = turnResult.currentEmotion as any;
+      const intensity = Math.max(
+        1,
+        Math.min(5, Math.abs(enumDeltaToNumber(turnResult.stressDelta)) >= 10 ? 5 : 3)
+      );
       const stressSource = detectStressSource(sendText, currentCompanion.worldState);
       const newEmotionalState = updateEmotionalState(
         currentCompanion.emotionalDepth.state,
@@ -366,18 +398,74 @@ export default function ChatPage() {
       addEmotionalHistoryEntry(currentCompanion.id, {
         emotion,
         intensity,
-        trigger: sendText.slice(0, 50),
+        trigger: turnResult.shortTermUpdate.emotionTrigger || sendText.slice(0, 50),
         timestamp: Date.now(),
       });
 
       // 记录情绪记忆
-      if (emotion !== 'neutral') {
+      turnResult.memoryUpdate.emotionalMemoriesAdd.forEach((memory) => {
         addEmotionalMemory(currentCompanion.id, {
           id: `emo-${Date.now()}`,
-          content: sendText.slice(0, 50),
+          content: memory.content,
+          emotion: memory.emotion,
+          intensity: memory.intensity,
+          timestamp: Date.now(),
+        });
+      });
+
+      if (turnResult.memoryUpdate.emotionalMemoriesAdd.length === 0 && emotion !== 'neutral') {
+        addEmotionalMemory(currentCompanion.id, {
+          id: `emo-${Date.now()}`,
+          content: turnResult.shortTermUpdate.emotionTrigger || sendText.slice(0, 50),
           emotion,
           intensity,
           timestamp: Date.now(),
+        });
+      }
+
+      const cardUpdate = turnResult.characterCardUpdate;
+      const hasCardUpdate =
+        Object.keys(cardUpdate.identity).length > 0 ||
+        (cardUpdate.preferences.likes?.length || 0) > 0 ||
+        (cardUpdate.preferences.dislikes?.length || 0) > 0 ||
+        cardUpdate.innerWorld.length > 0 ||
+        cardUpdate.habits.length > 0;
+      if (hasCardUpdate) {
+        const nextLikes = Array.from(new Set([
+          ...currentCompanion.characterCard.preferences.likes,
+          ...(cardUpdate.preferences.likes || []),
+        ])).slice(-20);
+        const nextDislikes = Array.from(new Set([
+          ...currentCompanion.characterCard.preferences.dislikes,
+          ...(cardUpdate.preferences.dislikes || []),
+        ])).slice(-20);
+        const nextInnerWorld = Array.from(new Set([
+          ...currentCompanion.characterCard.innerWorld,
+          ...cardUpdate.innerWorld,
+        ])).slice(-20);
+        const nextHabits = Array.from(new Set([
+          ...currentCompanion.characterCard.habits,
+          ...cardUpdate.habits,
+        ])).slice(-20);
+        const nextIdentity = {
+          ...currentCompanion.characterCard.identity,
+          ...cardUpdate.identity,
+        };
+
+        updateCharacterCard(currentCompanion.id, {
+          identity: nextIdentity,
+          preferences: {
+            likes: nextLikes,
+            dislikes: nextDislikes,
+          },
+          innerWorld: nextInnerWorld,
+          habits: nextHabits,
+          collectionProgress: {
+            identity: Object.keys(nextIdentity).length,
+            preferences: nextLikes.length + nextDislikes.length,
+            innerWorld: nextInnerWorld.length,
+            habits: nextHabits.length,
+          },
         });
       }
 

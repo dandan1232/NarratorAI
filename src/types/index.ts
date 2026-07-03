@@ -12,6 +12,15 @@ export interface UserPreferences {
   autoPlayVoice: boolean;
 }
 
+export type ModelApiFormat = 'mimo' | 'openai';
+
+export interface ModelConfig {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  apiFormat: ModelApiFormat;
+}
+
 export interface Companion {
   id: string;
   name: string;
@@ -140,6 +149,47 @@ export interface AppState {
   user: User | null;
   isInitialized: boolean;
   currentView: 'welcome' | 'setup' | 'chat' | 'settings' | 'voice' | 'companions' | 'drive';
+  modelConfig: ModelConfig;
+}
+
+export type TurnDeltaEnum =
+  | 'major_decrease'
+  | 'minor_decrease'
+  | 'neutral'
+  | 'minor_increase'
+  | 'major_increase';
+
+export interface StructuredTurnResult {
+  analysis: string;
+  visibleText: string;
+  currentEmotion: EmotionType | string;
+  stateDelta: Record<keyof RelationshipDimensions, TurnDeltaEnum>;
+  stressDelta: TurnDeltaEnum;
+  shortTermUpdate: {
+    emotionTrigger: string;
+    interactionTrend: string;
+  };
+  memoryUpdate: {
+    revealedFactsAdd: Array<{
+      category: RevealedFact['category'];
+      content: string;
+    }>;
+    emotionalMemoriesAdd: Array<{
+      content: string;
+      emotion: EmotionType;
+      intensity: number;
+    }>;
+    lastSummary: string;
+  };
+  characterCardUpdate: {
+    identity: Record<string, string>;
+    preferences: {
+      likes?: string[];
+      dislikes?: string[];
+    };
+    innerWorld: string[];
+    habits: string[];
+  };
 }
 
 // ==================== Phase 1: CyberPersona 设计理念 ====================

@@ -17,7 +17,9 @@ import {
   Download,
   Upload,
   Camera,
+  KeyRound,
 } from 'lucide-react';
+import { ModelApiFormat } from '../types';
 
 const AVATAR_OPTIONS = [
   '👨', '👩', '🧑', '👴', '👵', '🧑‍⚕️',
@@ -32,6 +34,7 @@ export default function SettingsPage() {
     user, setUser, updateUserPreferences,
     currentCompanion, updateCompanion,
     reset, setCurrentView,
+    modelConfig, updateModelConfig,
   } = useAppStore();
   const navigate = useNavigate();
 
@@ -39,6 +42,10 @@ export default function SettingsPage() {
   const [companionName, setCompanionName] = useState(currentCompanion?.name || '');
   const [companionAvatar, setCompanionAvatar] = useState(currentCompanion?.avatar || '');
   const [companionPersonality, setCompanionPersonality] = useState(currentCompanion?.personality || '');
+  const [modelBaseUrl, setModelBaseUrl] = useState(modelConfig.baseUrl);
+  const [modelApiKey, setModelApiKey] = useState(modelConfig.apiKey);
+  const [modelName, setModelName] = useState(modelConfig.model);
+  const [modelApiFormat, setModelApiFormat] = useState<ModelApiFormat>(modelConfig.apiFormat);
   const [saved, setSaved] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement>(null);
@@ -66,6 +73,16 @@ export default function SettingsPage() {
       });
       showSaved('伙伴设置已保存');
     }
+  };
+
+  const handleSaveModelConfig = () => {
+    updateModelConfig({
+      baseUrl: modelBaseUrl.trim(),
+      apiKey: modelApiKey.trim(),
+      model: modelName.trim() || (modelApiFormat === 'openai' ? 'gpt-4o-mini' : 'mimo-v2.5'),
+      apiFormat: modelApiFormat,
+    });
+    showSaved('模型配置已保存');
   };
 
   const handleReset = () => {
@@ -237,6 +254,80 @@ export default function SettingsPage() {
               activeColor="bg-orange-500"
               onClick={() => updateUserPreferences({ autoPlayVoice: !user.preferences.autoPlayVoice })}
             />
+          </div>
+        </div>
+
+        {/* Model Settings */}
+        <div className="glass rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <KeyRound className="w-5 h-5 text-orange-500" />
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">大模型配置</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">API 格式</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: 'mimo', label: 'MiMo / Messages' },
+                  { value: 'openai', label: 'OpenAI Compatible' },
+                ] as Array<{ value: ModelApiFormat; label: string }>).map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setModelApiFormat(option.value)}
+                    className={`px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${
+                      modelApiFormat === option.value
+                        ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:border-orange-300'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Base URL</label>
+              <input
+                type="url"
+                value={modelBaseUrl}
+                onChange={(e) => setModelBaseUrl(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 dark:text-gray-100"
+                placeholder={modelApiFormat === 'openai' ? 'https://api.openai.com' : 'https://你的-mimo-api'}
+              />
+              <p className="mt-1 text-xs text-gray-400">留空时使用项目现有代理或环境变量配置。</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">API Key</label>
+              <input
+                type="password"
+                value={modelApiKey}
+                onChange={(e) => setModelApiKey(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 dark:text-gray-100"
+                placeholder="仅保存在当前浏览器本地"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">模型</label>
+              <input
+                type="text"
+                value={modelName}
+                onChange={(e) => setModelName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 dark:text-gray-100"
+                placeholder={modelApiFormat === 'openai' ? 'gpt-4o-mini' : 'mimo-v2.5'}
+              />
+            </div>
+
+            <button
+              onClick={handleSaveModelConfig}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+            >
+              <Save className="w-4 h-4" />
+              保存模型配置
+            </button>
           </div>
         </div>
 

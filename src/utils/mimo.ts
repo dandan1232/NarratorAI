@@ -1,3 +1,5 @@
+import { ModelConfig } from '../types';
+
 // 检查环境变量，决定使用代理还是直连
 const MIMO_BASE_URL = import.meta.env.VITE_MIMO_BASE_URL || '';
 const MIMO_AUTH_TOKEN = import.meta.env.VITE_MIMO_AUTH_TOKEN || '';
@@ -37,43 +39,66 @@ class MimoClient {
     this.ttsProxyPath = MIMO_TTS_PROXY_PATH;
   }
 
-  // 通用请求方法
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    // 构建完整的请求URL
-    const baseUrl = MIMO_DIRECT_URL || this.proxyPath;
-    const url = `${baseUrl}${endpoint}`;
+  private getConfiguredBaseUrl(config?: ModelConfig): string {
+    return config?.baseUrl.trim().replace(/\/$/, '') || MIMO_DIRECT_URL || this.proxyPath;
+  }
 
-    // 构建请求头，如果是直连模式则添加Authorization
-    const headers: Record<string, string> = {
+  private getConfiguredHeaders(config?: ModelConfig): Record<string, string> {
+    const apiKey = config?.apiKey.trim() || MIMO_AUTH_TOKEN;
+    return {
       'Content-Type': 'application/json',
+      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
     };
+  }
 
-    if (MIMO_DIRECT_URL && MIMO_AUTH_TOKEN) {
-      headers['Authorization'] = `Bearer ${MIMO_AUTH_TOKEN}`;
-    }
+  private async openAiChat(
+    messages: MimoMessage[],
+    systemPrompt: string | undefined,
+    config: ModelConfig
+  ): Promise<string> {
+    const formattedMessages = [
+      ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+      ...messages.map((msg) => ({
+        role: msg.role,
+        content: msg.image
+          ? [
+              { type: 'text', text: msg.content },
+              { type: 'image_url', image_url: { url: msg.image } },
+            ]
+          : msg.content,
+      })),
+    ];
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
+    const response = await fetch(`${this.getConfiguredBaseUrl(config)}/v1/chat/completions`, {
+      method: 'POST',
+      headers: this.getConfiguredHeaders(config),
+      body: JSON.stringify({
+        model: config.model || 'gpt-4o-mini',
+        messages: formattedMessages,
+        temperature: 0.8,
+      }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`MiMo API error: ${response.status} - ${error}`);
+      throw new Error(`OpenAI-compatible API error: ${response.status} - ${error}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    return result?.choices?.[0]?.message?.content || '';
   }
 
-  // 对话补全 - 使用 MiMo-V2.5（支持多模态）
+  // 对话补全 - 默认使用 MiMo-V2.5，也支持用户配置的 OpenAI 兼容接口
   async chat(
     messages: MimoMessage[],
     systemPrompt?: string,
-    model: string = 'mimo-v2.5'
+    model: string = 'mimo-v2.5',
+    config?: ModelConfig
   ): Promise<string> {
+    if (config?.baseUrl.trim() && config.apiFormat === 'openai') {
+      return this.openAiChat(messages, systemPrompt, config);
+    }
+
     // 构建消息数组，支持图片
     const formattedMessages = messages.map(msg => {
       const content: any[] = [
@@ -105,7 +130,7 @@ class MimoClient {
     });
 
     const body: any = {
-      model,
+      model: config?.model || model,
       max_tokens: 2048,
       stream: false,
       messages: formattedMessages,
@@ -115,13 +140,22 @@ class MimoClient {
       body.system = systemPrompt;
     }
 
-    const response = await this.request<any>('/v1/messages', {
+    const baseUrl = this.getConfiguredBaseUrl(config);
+    const response = await fetch(`${baseUrl}/v1/messages`, {
       method: 'POST',
+      headers: this.getConfiguredHeaders(config),
       body: JSON.stringify(body),
     });
 
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`MiMo API error: ${response.status} - ${error}`);
+    }
+
+    const result = await response.json();
+
     // 提取文本内容（跳过 thinking 部分）
-    const textBlock = response.content?.find((block: any) => block.type === 'text');
+    const textBlock = result.content?.find((block: any) => block.type === 'text');
     return textBlock?.text || '';
   }
 

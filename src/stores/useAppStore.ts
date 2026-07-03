@@ -4,7 +4,7 @@ import {
   AppState, CompanionState, User, Companion, ChatSession, Message, Memory, Voice,
   CharacterCard, AffectionSystem, AffectionLevel, RevealedFact, SessionSummary, EmotionalMemory,
   RelationshipDimensions, RelationshipLevel, EmotionalState, EmotionalHistoryEntry,
-  WorldState
+  WorldState, ModelConfig
 } from '../types';
 import {
   createInitialCharacterCard,
@@ -98,6 +98,7 @@ interface AppStore extends AppState, CompanionState {
   setInitialized: (initialized: boolean) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  updateModelConfig: (config: Partial<ModelConfig>) => void;
   reset: () => void;
 
   // Phase 1: CyberPersona 设计理念
@@ -143,6 +144,12 @@ const initialState: AppState & {
   user: null,
   isInitialized: false,
   currentView: 'welcome',
+  modelConfig: {
+    baseUrl: '',
+    apiKey: '',
+    model: 'mimo-v2.5',
+    apiFormat: 'mimo',
+  },
   companions: [],
   currentCompanion: null,
   sessions: [],
@@ -273,6 +280,13 @@ export const useAppStore = create<AppStore>()(
       setInitialized: (initialized) => set({ isInitialized: initialized }),
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
+      updateModelConfig: (config) =>
+        set((state) => ({
+          modelConfig: {
+            ...state.modelConfig,
+            ...config,
+          },
+        })),
       reset: () => set(initialState),
 
       // Phase 1: CyberPersona 设计理念
@@ -454,7 +468,11 @@ export const useAppStore = create<AppStore>()(
           const companion = state.companions.find((c: Companion) => c.id === companionId);
           if (!companion) return state;
 
-          const newDimensions = { ...companion.relationshipSystem.dimensions, ...updates };
+          const newDimensions = { ...companion.relationshipSystem.dimensions };
+          (Object.keys(updates) as Array<keyof RelationshipDimensions>).forEach((key) => {
+            const delta = updates[key] ?? 0;
+            newDimensions[key] = Math.max(0, Math.min(100, newDimensions[key] + delta));
+          });
 
           // 计算整体关系等级
           const avg = (newDimensions.trust + newDimensions.security + newDimensions.closeness + newDimensions.neediness + newDimensions.possessiveness) / 5;
@@ -616,8 +634,12 @@ export const useAppStore = create<AppStore>()(
         memories: state.memories,
         voices: state.voices,
         isInitialized: state.isInitialized,
+        modelConfig: state.modelConfig,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state && !state.modelConfig) {
+          state.modelConfig = initialState.modelConfig;
+        }
         if (state?.companions) {
           state.companions = state.companions.map(migrateCompanion);
           if (state.currentCompanion) {
