@@ -12,7 +12,7 @@
 - **角色卡系统** — characterCard 统一数据源，6 类量子态动态 KV（身份/外形/性格/喜好/心事/习惯），成就驱动收集
 - **世界观同步** — 天气基于 wttr.in 查询并 15 分钟缓存，节日感知覆盖 16 个固定节日 + 4 个农历节日，时间强制 Asia/Shanghai 时区（7 时段 + 精确小时），位置在首次提到城市时量子态坍缩
 - **五种开场策略** — 情绪宣泄 / 感官分享 / 薛定谔提问 / 假装发错 / 观测者静默，脚本随机分配
-- **记忆系统** — 跨 session 摘要，角色记忆（revealedFacts，setting 不可变 / experience 可修订）
+- **记忆系统** — `characterCard` 统一数据源，`sessionSummaries` 最近 5 次 session 摘要，`recentContext` 最近 10 条对话记录（5 轮完整上下文），`emotionalMemories` 长期情绪记忆
 - **语音** — Agent 直接调用 mimo-tts（voice design → clone 工作流）
 - **图片** — Agent 直接调用 image-api，gpt-image-2 生成 + 参考照片 edit API
 - **表情包** — tangdouz API 免费表情包搜索，情绪驱动
@@ -58,6 +58,15 @@ NarratorAI 的聊天体验已经迁移为“结构化回合 + 状态结算”模
 - **节日**：内置 16 个固定公历节日，以及春节、元宵、端午、中秋 4 个农历节日。
 - **时间**：强制使用 `Asia/Shanghai` 时区，提供 7 个时段（清晨/早上/中午/下午/晚上/深夜/凌晨）和精确小时。
 - **位置**：初始保持量子态；当用户首次提到城市时坍缩为确定城市，后续天气和环境描述依赖该城市。
+
+### 记忆系统
+
+当前实现里的记忆分层是：
+
+- `characterCard`：角色信息的统一数据源，身份/喜好/心事/习惯等量子态字段逐步坍缩。
+- `sessionSummaries`：保留最近 5 次 session 摘要，用于长对话压缩。
+- `recentContext`：保留最近 10 条对话记录，也就是 5 轮完整上下文。
+- `emotionalMemories`：长期情绪记忆，保留更长历史用于情绪连续性。
 
 ### 结构化回合输出
 

@@ -8,6 +8,7 @@ import {
 import {
   AFFECTION_LEVEL_NAMES,
   formatRevealedFacts,
+  formatRecentContext,
   formatSessionSummaries,
   getWorldGuide,
 } from './characterAnalyzer';
@@ -145,6 +146,9 @@ ${formatRevealedFacts(companion.memory.revealedFacts)}
 
 【近期摘要】
 ${formatSessionSummaries(companion.memory.sessionSummaries)}
+
+【最近上下文】
+${formatRecentContext(companion.memory.recentContext)}
 
 【量子态角色卡】
 未出现过的信息不要凭空固定。已揭示的信息必须保持一致。

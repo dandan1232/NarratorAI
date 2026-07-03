@@ -57,7 +57,10 @@ function migrateCompanion(companion: any): Companion {
     ...companion,
     characterCard: companion.characterCard || createInitialCharacterCard(),
     affection,
-    memory: companion.memory || createInitialMemory(),
+    memory: {
+      ...createInitialMemory(),
+      ...(companion.memory || {}),
+    },
     relationshipSystem: companion.relationshipSystem || createInitialRelationshipSystem(),
     emotionalDepth,
     openingStrategy: companion.openingStrategy || getRandomOpeningStrategy(),
@@ -217,21 +220,48 @@ export const useAppStore = create<AppStore>()(
         })),
       setCurrentSession: (session) => set({ currentSession: session }),
       addMessage: (sessionId, message) =>
-        set((state) => ({
-          sessions: state.sessions.map((s: ChatSession) =>
-            s.id === sessionId
-              ? { ...s, messages: [...s.messages, message], updatedAt: Date.now() }
-              : s
-          ),
-          currentSession:
-            state.currentSession?.id === sessionId
-              ? {
-                  ...state.currentSession,
-                  messages: [...state.currentSession.messages, message],
-                  updatedAt: Date.now(),
-                }
-              : state.currentSession,
-        })),
+        set((state) => {
+          const session = state.sessions.find((s: ChatSession) => s.id === sessionId);
+          const updatedMessages = session ? [...session.messages, message] : [message];
+          const updatedRecentContext = updatedMessages.slice(-10);
+
+          return {
+            sessions: state.sessions.map((s: ChatSession) =>
+              s.id === sessionId
+                ? { ...s, messages: updatedMessages, updatedAt: Date.now() }
+                : s
+            ),
+            currentSession:
+              state.currentSession?.id === sessionId
+                ? {
+                    ...state.currentSession,
+                    messages: [...state.currentSession.messages, message],
+                    updatedAt: Date.now(),
+                  }
+                : state.currentSession,
+            companions: state.companions.map((c: Companion) =>
+              session && c.id === session.companionId
+                ? {
+                    ...c,
+                    memory: {
+                      ...c.memory,
+                      recentContext: updatedRecentContext,
+                    },
+                  }
+                : c
+            ),
+            currentCompanion:
+              state.currentCompanion && session && state.currentCompanion.id === session.companionId
+                ? {
+                    ...state.currentCompanion,
+                    memory: {
+                      ...state.currentCompanion.memory,
+                      recentContext: updatedRecentContext,
+                    },
+                  }
+                : state.currentCompanion,
+          };
+        }),
       updateMessage: (sessionId, messageId, updates) =>
         set((state) => ({
           sessions: state.sessions.map((s) =>
@@ -447,8 +477,8 @@ export const useAppStore = create<AppStore>()(
           const companion = state.companions.find((c: Companion) => c.id === companionId);
           if (!companion) return state;
 
-          // 保持最近 20 条情绪记忆
-          const updatedMemories = [...companion.memory.emotionalMemories, memory].slice(-20);
+          // 保持长期情绪记忆的可控上限
+          const updatedMemories = [...companion.memory.emotionalMemories, memory].slice(-100);
 
           const updatedMemory = {
             ...companion.memory,

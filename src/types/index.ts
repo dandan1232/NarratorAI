@@ -418,10 +418,11 @@ export interface AchievementSystem {
 export interface MemorySystem {
   // 短期记忆（当前会话上下文）
   shortTerm: Message[];
+  recentContext: Message[]; // 最近 10 条对话记录（5 轮完整上下文）
 
   // 长期记忆（跨会话）
   sessionSummaries: SessionSummary[];  // 最近 5 次会话摘要
-  emotionalMemories: EmotionalMemory[]; // 情绪记忆
+  emotionalMemories: EmotionalMemory[]; // 长期情绪记忆
   revealedFacts: RevealedFact[];        // 已揭示的事实
 }
 

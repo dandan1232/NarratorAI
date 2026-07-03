@@ -149,6 +149,7 @@ export function detectTaskCompletion(
 export function createInitialMemory() {
   return {
     shortTerm: [],
+    recentContext: [],
     sessionSummaries: [],
     emotionalMemories: [],
     revealedFacts: [],
@@ -671,8 +672,18 @@ export function formatSessionSummaries(summaries: SessionSummary[]): string {
   if (summaries.length === 0) return '暂无历史记忆';
 
   return summaries
-    .slice(-3) // 只显示最近 3 次
+    .slice(-5) // 只显示最近 5 次
     .map(s => `- ${s.summary}`)
+    .join('\n');
+}
+
+// 格式化最近上下文
+export function formatRecentContext(messages: Message[]): string {
+  if (messages.length === 0) return '暂无最近上下文';
+
+  return messages
+    .slice(-10)
+    .map((m) => `${m.role === 'user' ? '用户' : '角色'}: ${m.content}`)
     .join('\n');
 }
 
@@ -717,7 +728,10 @@ ${worldState ? getWorldGuide(worldState) : ''}
 ${formatRevealedFacts(memory.revealedFacts)}
 
 【近期记忆】
-${formatSessionSummaries(memory.sessionSummaries)}`;
+${formatSessionSummaries(memory.sessionSummaries)}
+
+【最近上下文】
+${formatRecentContext(memory.recentContext)}`;
 
   // 根据好感度调整语气
   const toneGuide = getToneGuide(affection.level);

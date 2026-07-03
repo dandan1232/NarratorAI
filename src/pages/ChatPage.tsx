@@ -298,18 +298,19 @@ export default function ChatPage() {
     }
 
     try {
-      const systemPrompt = buildStructuredTurnPrompt(currentCompanion);
+      const latestCompanion = useAppStore.getState().currentCompanion || currentCompanion;
+      const systemPrompt = buildStructuredTurnPrompt(latestCompanion);
 
       // 过滤掉 greeting，保留后续对话
       const historyMessages = currentSession.messages
         .filter((msg: Message) => msg.role !== 'assistant' || msg.id !== currentSession.messages[0]?.id);
 
-      const recentMessages = historyMessages.slice(-20);
+      const recentMessages = historyMessages.slice(-9);
 
       const messages: MimoMessage[] = [];
 
-      // 如果历史超过 20 条，注入会话摘要作为上下文
-      if (historyMessages.length > 20 && currentCompanion.memory.sessionSummaries.length > 0) {
+      // 如果历史超过 10 条，注入会话摘要作为上下文
+      if (historyMessages.length > 9 && currentCompanion.memory.sessionSummaries.length > 0) {
         const latestSummary = currentCompanion.memory.sessionSummaries[currentCompanion.memory.sessionSummaries.length - 1];
         const summaryParts = [latestSummary.summary];
         if (latestSummary.keyEvents.length > 0) {

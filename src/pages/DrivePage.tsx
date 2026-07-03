@@ -127,15 +127,16 @@ export default function DrivePage() {
     setIsTyping(true);
 
     try {
-      const systemPrompt = buildSystemPrompt(currentCompanion);
+      const latestCompanion = useAppStore.getState().currentCompanion || currentCompanion;
+      const systemPrompt = buildSystemPrompt(latestCompanion);
 
       const historyMessages = currentSession.messages
         .filter((msg: Message) => msg.role !== 'assistant' || msg.id !== currentSession.messages[0]?.id);
-      const recentMessages = historyMessages.slice(-20);
+      const recentMessages = historyMessages.slice(-9);
 
       const messages: MimoMessage[] = [];
 
-      if (historyMessages.length > 20 && currentCompanion.memory.sessionSummaries.length > 0) {
+      if (historyMessages.length > 9 && currentCompanion.memory.sessionSummaries.length > 0) {
         const latestSummary = currentCompanion.memory.sessionSummaries[currentCompanion.memory.sessionSummaries.length - 1];
         const summaryParts = [latestSummary.summary];
         if (latestSummary.keyEvents.length > 0) summaryParts.push(`关键事件: ${latestSummary.keyEvents.join('、')}`);

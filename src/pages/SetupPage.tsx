@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/useAppStore';
 import { Companion } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
+  Wand2,
 } from 'lucide-react';
 import {
   createInitialCharacterCard,
@@ -83,8 +84,22 @@ const companionTemplates = [
   },
 ];
 
+const customCompanionTemplate = {
+  id: 'custom',
+  name: '自定义伙伴',
+  avatar: '✨',
+  relationship: 'custom' as const,
+  personality: '由你定义 TA 的性格、边界和相处方式',
+  description: '一个完全由你定制的陪伴伙伴，会根据你的设定逐步形成独特人格。',
+  traits: ['自定义', '可塑造', '专属'],
+  greeting: '你好呀，我想先听听你希望我是什么样的人。',
+};
+
 export default function SetupPage() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const location = useLocation();
+  const isAddCompanion = location.state?.mode === 'add_companion';
+  const returnTo = location.state?.from || '/';
+  const [currentStep, setCurrentStep] = useState(isAddCompanion ? 2 : 1);
   const [nickname, setNickname] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [customPersonality, setCustomPersonality] = useState('');
@@ -98,30 +113,40 @@ export default function SetupPage() {
   };
 
   const handleBack = () => {
+    if (isAddCompanion && currentStep === 2) {
+      navigate(returnTo, { replace: true });
+      return;
+    }
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      return;
     }
+    navigate(returnTo, { replace: true });
   };
 
   const handleComplete = () => {
-    // Update user nickname
-    if (user) {
-      setUser({ ...user, nickname: nickname || '用户' });
-    } else {
-      setUser({
-        id: 'user-1',
-        nickname: nickname || '用户',
-        preferences: {
-          theme: 'light',
-          language: 'zh',
-          ttsEnabled: true,
-          autoPlayVoice: true,
-        },
-      });
+    // 首次初始化时才写入昵称；新增伙伴流程不改用户资料
+    if (!isAddCompanion) {
+      if (user) {
+        setUser({ ...user, nickname: nickname || '用户' });
+      } else {
+        setUser({
+          id: 'user-1',
+          nickname: nickname || '用户',
+          preferences: {
+            theme: 'light',
+            language: 'zh',
+            ttsEnabled: true,
+            autoPlayVoice: true,
+          },
+        });
+      }
     }
 
     // Create companion
-    const template = companionTemplates.find((t) => t.id === selectedTemplate);
+    const template = selectedTemplate === customCompanionTemplate.id
+      ? customCompanionTemplate
+      : companionTemplates.find((t) => t.id === selectedTemplate);
     if (template) {
       const newCompanion: Companion = {
         id: `companion-${Date.now()}`,
@@ -199,6 +224,30 @@ export default function SetupPage() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+              <button
+                onClick={() => setSelectedTemplate(customCompanionTemplate.id)}
+                className={`relative p-4 md:p-6 rounded-2xl transition-all duration-300 ${
+                  selectedTemplate === customCompanionTemplate.id
+                    ? 'bg-gradient-to-br from-orange-100 to-amber-100 border-2 border-orange-300 shadow-lg scale-105'
+                    : 'glass hover:shadow-md border border-dashed border-orange-200 dark:border-orange-700/50'
+                }`}
+              >
+                {selectedTemplate === customCompanionTemplate.id && (
+                  <div className="absolute top-2 right-2 w-5 h-5 md:w-6 md:h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                    <Check className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  </div>
+                )}
+                <div className="w-10 h-10 md:w-14 md:h-14 mx-auto mb-2 md:mb-3 rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/40 dark:to-amber-900/40 flex items-center justify-center">
+                  <Wand2 className="w-5 h-5 md:w-7 md:h-7 text-orange-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm md:text-base">
+                  {customCompanionTemplate.name}
+                </h3>
+                <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  自己定义 TA
+                </p>
+              </button>
+
               {companionTemplates.map((template) => (
                 <button
                   key={template.id}
@@ -237,12 +286,14 @@ export default function SetupPage() {
                 定制个性特点
               </h2>
               <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">
-                描述你希望伙伴具有的性格特点，或者使用默认设置
+                {selectedTemplate === customCompanionTemplate.id
+                  ? '写下你希望 TA 拥有的性格、说话方式和相处边界'
+                  : '描述你希望伙伴具有的性格特点，或者使用默认设置'}
               </p>
             </div>
 
             <div className="max-w-md mx-auto">
-              {selectedTemplate && (
+              {selectedTemplate && selectedTemplate !== customCompanionTemplate.id && (
                 <div className="mb-4 md:mb-6 p-3 md:p-4 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50">
                   <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2 text-sm md:text-base">默认性格特点：</h4>
                   <div className="flex flex-wrap gap-1.5 md:gap-2">
@@ -263,7 +314,11 @@ export default function SetupPage() {
               <textarea
                 value={customPersonality}
                 onChange={(e) => setCustomPersonality(e.target.value)}
-                placeholder="描述你想要的性格特点，例如：温柔、幽默、善解人意..."
+                placeholder={
+                  selectedTemplate === customCompanionTemplate.id
+                    ? '例如：慢热但真诚，讲话简洁，有一点毒舌，会记住我的重要计划...'
+                    : '描述你想要的性格特点，例如：温柔、幽默、善解人意...'
+                }
                 className="w-full h-24 md:h-32 px-3 md:px-4 py-2 md:py-3 rounded-2xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 resize-none transition-colors text-sm md:text-base"
               />
             </div>
@@ -297,9 +352,12 @@ export default function SetupPage() {
               <div className="inline-flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 rounded-full bg-white shadow-sm">
                 <span className="text-xl md:text-2xl">
                   {companionTemplates.find((t) => t.id === selectedTemplate)?.avatar}
+                  {selectedTemplate === customCompanionTemplate.id && customCompanionTemplate.avatar}
                 </span>
                 <span className="font-medium text-gray-800 dark:text-gray-100 text-sm md:text-base">
-                  {companionTemplates.find((t) => t.id === selectedTemplate)?.name}
+                  {selectedTemplate === customCompanionTemplate.id
+                    ? customCompanionTemplate.name
+                    : companionTemplates.find((t) => t.id === selectedTemplate)?.name}
                 </span>
               </div>
             )}
@@ -318,6 +376,19 @@ export default function SetupPage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-2xl w-full py-8"
       >
+        <div className="mb-4 md:mb-6 flex items-center justify-between">
+          <button
+            onClick={handleBack}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            返回
+          </button>
+          <div className="text-xs text-gray-400 dark:text-gray-500">
+            {isAddCompanion ? '新增伙伴' : '首次初始化'}
+          </div>
+        </div>
+
         {/* Progress Steps */}
         <div className="flex items-center justify-center mb-8 md:mb-12 overflow-x-auto">
           {steps.map((step, index) => (

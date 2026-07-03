@@ -13,7 +13,7 @@ export default function CompanionsPage() {
   const {
     companions, currentCompanion, setCurrentCompanion,
     sessions, setCurrentSession,
-    setCurrentView, deleteCompanion,
+    deleteCompanion,
   } = useAppStore();
   const [deleteTarget, setDeleteTarget] = useState<Companion | null>(null);
 
@@ -21,8 +21,13 @@ export default function CompanionsPage() {
     setCurrentCompanion(companion);
     const session = sessions.find((s) => s.companionId === companion.id);
     setCurrentSession(session || null);
-    setCurrentView('chat');
     navigate('/chat');
+  };
+
+  const handleCreateCompanion = () => {
+    navigate('/setup', {
+      state: { mode: 'add_companion', from: '/companions' },
+    });
   };
 
   const handleDelete = () => {
@@ -69,7 +74,7 @@ export default function CompanionsPage() {
             </p>
           </div>
           <button
-            onClick={() => { setCurrentView('setup'); navigate('/setup'); }}
+            onClick={handleCreateCompanion}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
@@ -93,7 +98,7 @@ export default function CompanionsPage() {
               创建你的第一个陪伴伙伴，开始对话之旅
             </p>
             <button
-              onClick={() => { setCurrentView('setup'); navigate('/setup'); }}
+              onClick={handleCreateCompanion}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
