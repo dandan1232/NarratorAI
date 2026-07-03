@@ -1,13 +1,9 @@
 import { ModelConfig } from '../types';
+import { hasUsableModelConfig, normalizeModelConfig } from './modelConfig';
 
-// 检查环境变量，决定使用代理还是直连
 const MIMO_BASE_URL = import.meta.env.VITE_MIMO_BASE_URL || '';
 const MIMO_AUTH_TOKEN = import.meta.env.VITE_MIMO_AUTH_TOKEN || '';
-
-// 如果有环境变量，使用直连；否则使用代理路径
-const MIMO_PROXY_PATH = MIMO_BASE_URL ? '' : '/mimo';
 const MIMO_TTS_PROXY_PATH = MIMO_BASE_URL ? '' : '/mimo-tts';
-const MIMO_DIRECT_URL = MIMO_BASE_URL ? MIMO_BASE_URL : '';
 const MIMO_TTS_DIRECT_URL = MIMO_BASE_URL ? MIMO_BASE_URL.replace('/anthropic', '') : '';
 
 export interface MimoMessage {
@@ -31,24 +27,23 @@ export interface MimoTTSRequest {
 }
 
 class MimoClient {
-  private proxyPath: string;
-  private ttsProxyPath: string;
-
-  constructor() {
-    this.proxyPath = MIMO_PROXY_PATH;
-    this.ttsProxyPath = MIMO_TTS_PROXY_PATH;
+  private getConfiguredBaseUrl(config: ModelConfig): string {
+    return config.baseUrl.trim().replace(/\/$/, '');
   }
 
-  private getConfiguredBaseUrl(config?: ModelConfig): string {
-    return config?.baseUrl.trim().replace(/\/$/, '') || MIMO_DIRECT_URL || this.proxyPath;
-  }
-
-  private getConfiguredHeaders(config?: ModelConfig): Record<string, string> {
-    const apiKey = config?.apiKey.trim() || MIMO_AUTH_TOKEN;
+  private getConfiguredHeaders(config: ModelConfig): Record<string, string> {
+    const apiKey = config.apiKey.trim();
     return {
       'Content-Type': 'application/json',
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+      Authorization: `Bearer ${apiKey}`,
     };
+  }
+
+  private requireConfig(config?: ModelConfig): ModelConfig {
+    if (!config || !hasUsableModelConfig(config)) {
+      throw new Error('请先在大模型配置中填写 Base URL、API Key 和模型名。');
+    }
+    return normalizeModelConfig(config);
   }
 
   private async openAiChat(
@@ -73,7 +68,7 @@ class MimoClient {
       method: 'POST',
       headers: this.getConfiguredHeaders(config),
       body: JSON.stringify({
-        model: config.model || 'gpt-4o-mini',
+        model: config.model,
         messages: formattedMessages,
         temperature: 0.8,
       }),
@@ -88,15 +83,20 @@ class MimoClient {
     return result?.choices?.[0]?.message?.content || '';
   }
 
-  // 对话补全 - 默认使用 MiMo-V2.5，也支持用户配置的 OpenAI 兼容接口
+  // 对话补全 - 必须使用用户配置的模型服务
   async chat(
     messages: MimoMessage[],
     systemPrompt?: string,
-    model: string = 'mimo-v2.5',
+    model?: string,
     config?: ModelConfig
   ): Promise<string> {
-    if (config?.baseUrl.trim() && config.apiFormat === 'openai') {
-      return this.openAiChat(messages, systemPrompt, config);
+    const activeConfig = this.requireConfig({
+      ...(config || {}),
+      model: model || config?.model || '',
+    } as ModelConfig);
+
+    if (activeConfig.apiFormat === 'openai') {
+      return this.openAiChat(messages, systemPrompt, activeConfig);
     }
 
     // 构建消息数组，支持图片
@@ -130,7 +130,7 @@ class MimoClient {
     });
 
     const body: any = {
-      model: config?.model || model,
+      model: activeConfig.model,
       max_tokens: 2048,
       stream: false,
       messages: formattedMessages,
@@ -140,10 +140,10 @@ class MimoClient {
       body.system = systemPrompt;
     }
 
-    const baseUrl = this.getConfiguredBaseUrl(config);
+    const baseUrl = this.getConfiguredBaseUrl(activeConfig);
     const response = await fetch(`${baseUrl}/v1/messages`, {
       method: 'POST',
-      headers: this.getConfiguredHeaders(config),
+      headers: this.getConfiguredHeaders(activeConfig),
       body: JSON.stringify(body),
     });
 
@@ -165,20 +165,16 @@ class MimoClient {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
     audioConfig: { format?: string; voice?: string }
   ): Promise<ArrayBuffer> {
-    // 构建完整的请求URL
-    const baseUrl = MIMO_TTS_DIRECT_URL || this.ttsProxyPath;
-    const url = `${baseUrl}/v1/chat/completions`;
-
-    // 构建请求头，如果是直连模式则添加Authorization
+    const baseUrl = MIMO_TTS_DIRECT_URL || MIMO_TTS_PROXY_PATH;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
     if (MIMO_TTS_DIRECT_URL && MIMO_AUTH_TOKEN) {
-      headers['Authorization'] = `Bearer ${MIMO_AUTH_TOKEN}`;
+      headers.Authorization = `Bearer ${MIMO_AUTH_TOKEN}`;
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -202,7 +198,6 @@ class MimoClient {
       throw new Error('No audio data in response');
     }
 
-    // base64 解码为 ArrayBuffer
     const binaryString = atob(audioData);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {

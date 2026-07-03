@@ -6,6 +6,7 @@ import { ArrowLeft, Mic, MicOff, Send, Home } from 'lucide-react';
 import { Message } from '../types';
 import { mimoClient, MimoMessage } from '../utils/mimo';
 import { TaskToast } from '../components/TaskToast';
+import { hasUsableModelConfig } from '../utils/modelConfig';
 import {
   buildSystemPrompt,
   calculateAffectionChange,
@@ -63,6 +64,7 @@ export default function DrivePage() {
     updateEmotionalState: updateEmotionalStateStore,
     addEmotionalHistoryEntry, addEmotionalMemory,
     completeDailyTask, resetDailyTasks,
+    modelConfig,
   } = useAppStore();
 
   const scrollToBottom = useCallback(() => {
@@ -128,6 +130,17 @@ export default function DrivePage() {
     setShowInput(false);
     setIsTyping(true);
 
+    if (!hasUsableModelConfig(modelConfig)) {
+      addMessage(currentSession.id, {
+        id: `msg-${Date.now() + 1}`,
+        content: '请先在设置里的大模型配置中填写 Base URL、API Key 和模型名。',
+        role: 'assistant',
+        timestamp: Date.now(),
+      });
+      setIsTyping(false);
+      return;
+    }
+
     try {
       const latestCompanion = useAppStore.getState().currentCompanion || currentCompanion;
       const systemPrompt = buildSystemPrompt(latestCompanion);
@@ -152,7 +165,7 @@ export default function DrivePage() {
 
       messages.push({ role: 'user', content: sendText });
 
-      const responseText = await mimoClient.chat(messages, systemPrompt);
+      const responseText = await mimoClient.chat(messages, systemPrompt, modelConfig.model, modelConfig);
 
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
@@ -169,11 +182,11 @@ export default function DrivePage() {
       addAffectionPoints(currentCompanion.id, affectionChange);
 
       const allMessages = [...currentSession.messages, userMessage, assistantMessage];
-      const newFacts = await extractCharacterFacts(allMessages);
+      const newFacts = await extractCharacterFacts(allMessages, modelConfig);
       newFacts.forEach((fact) => addRevealedFact(currentCompanion.id, fact));
 
       if (allMessages.length > 0 && allMessages.length % 10 === 0) {
-        const summary = await generateSessionSummary(allMessages);
+        const summary = await generateSessionSummary(allMessages, modelConfig);
         if (summary) addSessionSummary(currentCompanion.id, summary);
       }
 

@@ -5,7 +5,7 @@ import { Heart, Sparkles, MessageCircle, ArrowRight } from 'lucide-react';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
-  const { setInitialized, setCurrentView, setUser, companions, isInitialized } = useAppStore();
+  const { setCurrentView, setUser, user, companions, isInitialized } = useAppStore();
 
   const handleStart = () => {
     // 如果已经有伴侣，直接跳转到聊天页面
@@ -15,18 +15,18 @@ export default function WelcomePage() {
       return;
     }
 
-    // 否则初始化并跳转到设置页面
-    setUser({
-      id: 'user-1',
-      nickname: '',
-      preferences: {
-        theme: 'light',
-        language: 'zh',
-        ttsEnabled: true,
-        autoPlayVoice: true,
-      },
-    });
-    setInitialized(true);
+    if (!user) {
+      setUser({
+        id: 'user-1',
+        nickname: '',
+        preferences: {
+          theme: 'light',
+          language: 'zh',
+          ttsEnabled: true,
+          autoPlayVoice: true,
+        },
+      });
+    }
     setCurrentView('setup');
     navigate('/setup');
   };

@@ -131,7 +131,7 @@ effective_delta = raw_delta × personality_factor × mood_factor
 
 ### 本地大模型配置
 
-用户可以在 **设置 → 大模型配置** 中填写自己的模型服务，配置会保存在浏览器本地 `localStorage`，不会写入仓库。
+首次进入应用会先引导用户填写大模型配置；也可以之后在 **设置 → 大模型配置** 中修改。配置会保存在浏览器本地 `localStorage`，不会写入仓库。
 
 支持两类接口：
 
@@ -140,7 +140,7 @@ effective_delta = raw_delta × personality_factor × mood_factor
 | MiMo / Messages | MiMo、Anthropic Messages 兼容服务 | `/v1/messages` |
 | OpenAI Compatible | OpenAI、兼容 OpenAI Chat Completions 的服务 | `/v1/chat/completions` |
 
-如果 Base URL 留空，则继续使用项目现有的 Vite 代理或环境变量配置。
+Base URL、API Key 和模型名都是必填项。项目不再内置默认对话模型，也不会自动使用本地代理。
 
 <div align="center">
 
@@ -177,7 +177,7 @@ effective_delta = raw_delta × personality_factor × mood_factor
 ## 功能特性
 
 - **多角色陪伴** — 男友、女友、好友、导师等多种陪伴角色，自由设定人设
-- **AI 智能对话** — MiMo-V2.5-Pro 驱动，支持上下文记忆，自然流畅
+- **AI 智能对话** — 使用用户配置的大模型服务，支持上下文记忆，自然流畅
 - **情绪表情包** — AI 回复时自动匹配情绪关键词，搜索并展示对应表情包
 - **语音对话** — 实时语音交互，支持 TTS 语音合成
 - **声音克隆** — 上传音频文件，AI 学习并克隆该声音
@@ -204,7 +204,7 @@ effective_delta = raw_delta × personality_factor × mood_factor
 | 动画 | Framer Motion |
 | 图标 | Lucide React |
 | 路由 | React Router 6 |
-| AI 接口 | MiMo AI API (MiMo-V2.5 多模态对话 / TTS / 声音克隆) |
+| AI 接口 | 用户配置的大模型服务 / 可选 MiMo TTS 与声音克隆 |
 
 ## 快速开始
 
@@ -214,24 +214,20 @@ effective_delta = raw_delta × personality_factor × mood_factor
 npm install
 ```
 
-### 2. 配置环境变量
+### 2. 首次配置大模型
 
-你可以用两种方式配置大模型：
-
-**方式一：浏览器本地配置（推荐给普通用户）**
-
-启动应用后进入 **设置 → 大模型配置**，填写：
+首次启动应用后点击 **开始旅程**，初始设置的第一步会要求填写：
 
 - API 格式：`MiMo / Messages` 或 `OpenAI Compatible`
 - Base URL
 - API Key
 - 模型名
 
-配置会保存在当前浏览器本地，不会提交到仓库。
+配置会保存在当前浏览器本地，不会提交到仓库。Base URL、API Key 和模型名必须同时填写后才能进入对话流程。
 
-**方式二：开发环境变量**
+### 3. 可选语音代理配置
 
-复制示例文件并填入你的 API Key：
+语音合成、声音克隆和声音设计仍可通过本地 Vite 代理调用 MiMo TTS。需要这些能力时，复制示例文件并填入对应 API Key：
 
 ```bash
 cp .env.example .env
@@ -243,9 +239,9 @@ cp .env.example .env
 VITE_MIMO_AUTH_TOKEN=你的MiMo API Key
 ```
 
-> **注意：** `.env` 文件已加入 `.gitignore`，不会被提交到仓库。若用户在设置页填写 API Key，则密钥保存在浏览器本地；若使用 `.env`，API Key 通过 Vite 代理或直连配置参与请求。
+> **注意：** `.env` 文件已加入 `.gitignore`，不会被提交到仓库。该变量只用于开发环境的语音代理，不会作为对话模型的默认配置。
 
-### 3. 启动开发服务器
+### 4. 启动开发服务器
 
 ```bash
 npm run dev
@@ -253,7 +249,7 @@ npm run dev
 
 访问 http://localhost:3000
 
-### 4. 构建生产版本
+### 5. 构建生产版本
 
 ```bash
 npm run build
@@ -289,6 +285,7 @@ src/
 ├── utils/               # 工具函数
 │   ├── api.ts             # 通用 API
 │   ├── mimo.ts            # MiMo API 客户端
+│   ├── modelConfig.ts     # 大模型配置校验和规范化
 │   ├── characterAnalyzer.ts # 角色、关系、情绪、成就分析
 │   └── turnEngine.ts      # CyberPersona 结构化回合协议与状态结算
 ├── App.tsx
@@ -300,18 +297,17 @@ src/
 
 ### 对话模型 API
 
-聊天模型支持项目代理、环境变量直连，以及用户在设置页填写的本地配置。
+聊天模型只使用用户在初始设置或设置页填写的本地配置。项目不提供内置默认模型。
 
 | 格式 | 路径 | 说明 |
 |------|------|------|
-| MiMo / Messages | `/v1/messages` | 默认结构，兼容当前 MiMo 多模态对话 |
+| MiMo / Messages | `/v1/messages` | 兼容 MiMo、Anthropic Messages 风格服务 |
 | OpenAI Compatible | `/v1/chat/completions` | 兼容 OpenAI Chat Completions 的服务 |
 
-### MiMo AI API
+### 可选 MiMo 语音 API
 
 | 功能 | 代理路径 | 目标路径 | 模型 |
 |------|----------|----------|------|
-| 对话 | `/mimo/v1/messages` | `/anthropic/v1/messages` | mimo-v2.5 |
 | 语音合成 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts |
 | 声音克隆 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts-voiceclone |
 | 声音设计 | `/mimo-tts/v1/chat/completions` | `/v1/chat/completions` | mimo-v2.5-tts-voicedesign |
@@ -325,12 +321,12 @@ src/
 ## 使用流程
 
 1. 首次打开进入 **欢迎页面**，了解功能介绍
-2. 点击"开始旅程"进入 **初始设置**，设定昵称、选择陪伴角色
-3. 在 **设置 → 大模型配置** 中填写自己的模型服务，或继续使用项目默认代理
+2. 点击"开始旅程"进入 **初始设置**，先填写大模型配置
+3. 继续设定昵称、选择陪伴角色
 4. 进入 **聊天界面**，开始与 AI 伙伴对话
 5. 每轮对话会生成结构化 TurnResult，自动结算关系、记忆、角色卡和成就
 6. 通过 **伙伴管理** 页面查看所有伙伴的好感度和消息统计
-7. 在 **设置** 中调整昵称、切换主题、管理声音配置
+7. 在 **设置** 中调整昵称、切换主题、修改模型配置或管理声音配置
 
 ## 许可证
 

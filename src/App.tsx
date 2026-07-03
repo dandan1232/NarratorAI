@@ -16,11 +16,11 @@ function App() {
 
   // Sync currentView with URL path
   useEffect(() => {
-    if (!isInitialized) {
+    const path = location.pathname;
+    if (!isInitialized && !path.startsWith('/setup')) {
       setCurrentView('welcome');
       return;
     }
-    const path = location.pathname;
     if (path.startsWith('/chat')) setCurrentView('chat');
     else if (path.startsWith('/companions')) setCurrentView('companions');
     else if (path.startsWith('/voice')) setCurrentView('voice');

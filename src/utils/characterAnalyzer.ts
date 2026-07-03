@@ -4,8 +4,9 @@ import {
   RevealedFact, SessionSummary, Message, EmotionType,
   RelationshipDimensions, RelationshipLevel, EmotionalState, EmotionalDepthSystem,
   OpeningStrategyType, OpeningStrategy, Achievement, CharacterCardAchievement, AchievementSystem,
-  WorldState, TimeOfDay, Season, DayOfWeek, Weather, Location, StressSource
+  WorldState, TimeOfDay, Season, DayOfWeek, Weather, Location, StressSource, ModelConfig
 } from '../types';
+import { hasUsableModelConfig } from './modelConfig';
 
 // ==================== 人格原型 ====================
 
@@ -514,9 +515,11 @@ export function calculateAffectionChange(
 
 // 生成会话摘要
 export async function generateSessionSummary(
-  messages: Message[]
+  messages: Message[],
+  modelConfig?: ModelConfig
 ): Promise<SessionSummary | null> {
   if (messages.length < 3) return null;
+  if (!modelConfig || !hasUsableModelConfig(modelConfig)) return null;
 
   const conversationText = messages
     .slice(-20) // 只取最近 20 条消息
@@ -538,7 +541,9 @@ ${conversationText}
   try {
     const response = await mimoClient.chat(
       [{ role: 'user', content: prompt }],
-      '你是一个对话分析助手，只返回 JSON 格式的结果。'
+      '你是一个对话分析助手，只返回 JSON 格式的结果。',
+      modelConfig.model,
+      modelConfig
     );
 
     const result = JSON.parse(response);
@@ -558,9 +563,11 @@ ${conversationText}
 
 // 提取角色信息（量子态坍缩）
 export async function extractCharacterFacts(
-  conversationHistory: Message[]
+  conversationHistory: Message[],
+  modelConfig?: ModelConfig
 ): Promise<RevealedFact[]> {
   if (conversationHistory.length < 2) return [];
+  if (!modelConfig || !hasUsableModelConfig(modelConfig)) return [];
 
   const conversationText = conversationHistory
     .slice(-6) // 只取最近 6 条消息
@@ -593,7 +600,9 @@ ${conversationText}
   try {
     const response = await mimoClient.chat(
       [{ role: 'user', content: prompt }],
-      '你是一个信息提取助手，只返回 JSON 格式的结果。'
+      '你是一个信息提取助手，只返回 JSON 格式的结果。',
+      modelConfig.model,
+      modelConfig
     );
 
     const facts = JSON.parse(response);

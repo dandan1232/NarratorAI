@@ -155,7 +155,7 @@ const initialState: AppState & {
   modelConfig: {
     baseUrl: '',
     apiKey: '',
-    model: 'mimo-v2.5',
+    model: '',
     apiFormat: 'mimo',
   },
   companions: [],
@@ -674,6 +674,17 @@ export const useAppStore = create<AppStore>()(
       onRehydrateStorage: () => (state) => {
         if (state && !state.modelConfig) {
           state.modelConfig = initialState.modelConfig;
+        } else if (state?.modelConfig) {
+          const hasBaseUrl = Boolean(state.modelConfig.baseUrl?.trim());
+          const hasApiKey = Boolean(state.modelConfig.apiKey?.trim());
+          const hasModel = Boolean(state.modelConfig.model?.trim());
+          state.modelConfig = {
+            ...initialState.modelConfig,
+            ...state.modelConfig,
+            baseUrl: state.modelConfig.baseUrl?.trim() || '',
+            apiKey: state.modelConfig.apiKey?.trim() || '',
+            model: hasBaseUrl && hasApiKey && hasModel ? state.modelConfig.model.trim() : '',
+          };
         }
         if (state?.companions) {
           state.companions = state.companions.map(migrateCompanion);

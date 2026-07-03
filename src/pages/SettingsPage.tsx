@@ -20,6 +20,7 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { ModelApiFormat } from '../types';
+import { hasUsableModelConfig, normalizeModelConfig } from '../utils/modelConfig';
 
 const AVATAR_OPTIONS = [
   '👨', '👩', '🧑', '👴', '👵', '🧑‍⚕️',
@@ -76,12 +77,17 @@ export default function SettingsPage() {
   };
 
   const handleSaveModelConfig = () => {
-    updateModelConfig({
-      baseUrl: modelBaseUrl.trim(),
-      apiKey: modelApiKey.trim(),
-      model: modelName.trim() || (modelApiFormat === 'openai' ? 'gpt-4o-mini' : 'mimo-v2.5'),
+    const nextConfig = normalizeModelConfig({
+      baseUrl: modelBaseUrl,
+      apiKey: modelApiKey,
+      model: modelName,
       apiFormat: modelApiFormat,
     });
+    if (!hasUsableModelConfig(nextConfig)) {
+      alert('请填写 Base URL、API Key 和模型名。');
+      return;
+    }
+    updateModelConfig(nextConfig);
     showSaved('模型配置已保存');
   };
 
@@ -296,7 +302,7 @@ export default function SettingsPage() {
                 className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 dark:text-gray-100"
                 placeholder={modelApiFormat === 'openai' ? 'https://api.openai.com' : 'https://你的-mimo-api'}
               />
-              <p className="mt-1 text-xs text-gray-400">留空时使用项目现有代理或环境变量配置。</p>
+              <p className="mt-1 text-xs text-gray-400">必填，填写模型服务的根地址。</p>
             </div>
 
             <div>
@@ -317,13 +323,14 @@ export default function SettingsPage() {
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 dark:text-gray-100"
-                placeholder={modelApiFormat === 'openai' ? 'gpt-4o-mini' : 'mimo-v2.5'}
+                placeholder="填写你的服务实际模型名"
               />
             </div>
 
             <button
               onClick={handleSaveModelConfig}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+              disabled={!hasUsableModelConfig({ baseUrl: modelBaseUrl, apiKey: modelApiKey, model: modelName, apiFormat: modelApiFormat })}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
               保存模型配置

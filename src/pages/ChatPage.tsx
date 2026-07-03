@@ -46,6 +46,7 @@ import { RelationshipPanel } from '../components/RelationshipPanel';
 import { CollectionToast } from '../components/CollectionToast';
 import { AchievementToast } from '../components/AchievementToast';
 import { TaskToast } from '../components/TaskToast';
+import { hasUsableModelConfig } from '../utils/modelConfig';
 
 // 日期格式化
 function formatDateLabel(timestamp: number): string {
@@ -282,6 +283,17 @@ export default function ChatPage() {
     setQuickReplies([]);
     setIsTyping(true);
 
+    if (!hasUsableModelConfig(modelConfig)) {
+      addMessage(currentSession.id, {
+        id: `msg-${Date.now() + 1}`,
+        content: '请先在设置里的大模型配置中填写 Base URL、API Key 和模型名。',
+        role: 'assistant',
+        timestamp: Date.now(),
+      });
+      setIsTyping(false);
+      return;
+    }
+
     const collapsedCity = currentCompanion.worldState.locationCollapsed
       ? null
       : collapseCityFromText(sendText);
@@ -345,7 +357,7 @@ export default function ChatPage() {
         const rawTurnResult = await mimoClient.chat(
           messages,
           systemPrompt,
-          modelConfig.model || 'mimo-v2.5',
+          modelConfig.model,
           modelConfig
         );
         turnResult = validateStructuredTurnResult(parseTurnJson(rawTurnResult));
@@ -395,7 +407,7 @@ export default function ChatPage() {
       }
 
       if (allMessages.length > 0 && allMessages.length % 10 === 0) {
-        const summary = await generateSessionSummary(allMessages);
+        const summary = await generateSessionSummary(allMessages, modelConfig);
         if (summary) {
           addSessionSummary(currentCompanion.id, summary);
         }

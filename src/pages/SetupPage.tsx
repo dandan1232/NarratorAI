@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/useAppStore';
-import { Companion } from '../types';
+import { Companion, ModelApiFormat } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
+  KeyRound,
   Heart,
   Sparkles,
   MessageCircle,
@@ -23,12 +24,14 @@ import {
   createInitialAchievementSystem,
   createInitialWorldState,
 } from '../utils/characterAnalyzer';
+import { hasUsableModelConfig, normalizeModelConfig } from '../utils/modelConfig';
 
 const steps = [
-  { id: 1, title: '昵称设置', icon: User },
-  { id: 2, title: '选择伙伴', icon: Heart },
-  { id: 3, title: '个性定制', icon: Sparkles },
-  { id: 4, title: '开始聊天', icon: MessageCircle },
+  { id: 1, title: '模型配置', icon: KeyRound },
+  { id: 2, title: '昵称设置', icon: User },
+  { id: 3, title: '选择伙伴', icon: Heart },
+  { id: 4, title: '个性定制', icon: Sparkles },
+  { id: 5, title: '开始聊天', icon: MessageCircle },
 ];
 
 const companionTemplates = [
@@ -99,21 +102,35 @@ export default function SetupPage() {
   const location = useLocation();
   const isAddCompanion = location.state?.mode === 'add_companion';
   const returnTo = location.state?.from || '/';
-  const [currentStep, setCurrentStep] = useState(isAddCompanion ? 2 : 1);
+  const [currentStep, setCurrentStep] = useState(isAddCompanion ? 3 : 1);
   const [nickname, setNickname] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [customPersonality, setCustomPersonality] = useState('');
   const navigate = useNavigate();
-  const { setUser, addCompanion, setCurrentCompanion, setCurrentView, user } = useAppStore();
+  const { setUser, addCompanion, setCurrentCompanion, setCurrentView, setInitialized, user, modelConfig, updateModelConfig } = useAppStore();
+  const [modelBaseUrl, setModelBaseUrl] = useState(modelConfig.baseUrl);
+  const [modelApiKey, setModelApiKey] = useState(modelConfig.apiKey);
+  const [modelName, setModelName] = useState(modelConfig.model);
+  const [modelApiFormat, setModelApiFormat] = useState<ModelApiFormat>(modelConfig.apiFormat);
+
+  const draftModelConfig = {
+    baseUrl: modelBaseUrl,
+    apiKey: modelApiKey,
+    model: modelName,
+    apiFormat: modelApiFormat,
+  };
 
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (currentStep === 1) {
+      updateModelConfig(normalizeModelConfig(draftModelConfig));
+    }
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const handleBack = () => {
-    if (isAddCompanion && currentStep === 2) {
+    if (isAddCompanion && currentStep === 3) {
       navigate(returnTo, { replace: true });
       return;
     }
@@ -173,6 +190,9 @@ export default function SetupPage() {
       setCurrentCompanion(newCompanion);
     }
 
+    if (!isAddCompanion) {
+      setInitialized(true);
+    }
     setCurrentView('chat');
     navigate('/chat');
   };
@@ -183,6 +203,83 @@ export default function SetupPage() {
         return (
           <motion.div
             key="step1"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="space-y-4 md:space-y-6"
+          >
+            <div className="text-center">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                先连接你的大模型
+              </h2>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">
+                需要填写自己的模型服务后才能开始对话，配置只保存在当前浏览器。
+              </p>
+            </div>
+
+            <div className="max-w-md mx-auto space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">API 格式</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: 'mimo', label: 'MiMo / Messages' },
+                    { value: 'openai', label: 'OpenAI Compatible' },
+                  ] as Array<{ value: ModelApiFormat; label: string }>).map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setModelApiFormat(option.value)}
+                      className={`px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${
+                        modelApiFormat === option.value
+                          ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                          : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:border-orange-300'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Base URL</label>
+                <input
+                  type="url"
+                  value={modelBaseUrl}
+                  onChange={(e) => setModelBaseUrl(e.target.value)}
+                  placeholder={modelApiFormat === 'openai' ? 'https://api.openai.com' : 'https://你的-mimo-api'}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">API Key</label>
+                <input
+                  type="password"
+                  value={modelApiKey}
+                  onChange={(e) => setModelApiKey(e.target.value)}
+                  placeholder="仅保存在当前浏览器本地"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">模型名</label>
+                <input
+                  type="text"
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  placeholder="填写你的服务实际模型名"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-orange-200 dark:border-gray-600 focus:border-orange-400 dark:focus:border-orange-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100 transition-colors"
+                />
+              </div>
+            </div>
+          </motion.div>
+        );
+
+      case 2:
+        return (
+          <motion.div
+            key="step2"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
@@ -207,10 +304,10 @@ export default function SetupPage() {
           </motion.div>
         );
 
-      case 2:
+      case 3:
         return (
           <motion.div
-            key="step2"
+            key="step3"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
@@ -272,10 +369,10 @@ export default function SetupPage() {
           </motion.div>
         );
 
-      case 3:
+      case 4:
         return (
           <motion.div
-            key="step3"
+            key="step4"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
@@ -325,10 +422,10 @@ export default function SetupPage() {
           </motion.div>
         );
 
-      case 4:
+      case 5:
         return (
           <motion.div
-            key="step4"
+            key="step5"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
@@ -344,7 +441,7 @@ export default function SetupPage() {
               一切准备就绪
             </h2>
             <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 max-w-md mx-auto">
-              {nickname || '用户'}，你的陪伴伙伴已经准备好认识你了。
+              {isAddCompanion ? '新的陪伴伙伴' : nickname || '用户'}已经准备好了。
               点击开始，开启你们的对话之旅。
             </p>
 
@@ -391,7 +488,9 @@ export default function SetupPage() {
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center mb-8 md:mb-12 overflow-x-auto">
-          {steps.map((step, index) => (
+          {steps
+            .filter((step) => !isAddCompanion || step.id >= 3)
+            .map((step, index, visibleSteps) => (
             <div key={step.id} className="flex items-center">
               <div
                 className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
@@ -406,7 +505,7 @@ export default function SetupPage() {
                   <step.icon className="w-4 h-4 md:w-5 md:h-5" />
                 )}
               </div>
-              {index < steps.length - 1 && (
+              {index < visibleSteps.length - 1 && (
                 <div
                   className={`w-8 md:w-20 h-1 mx-1 md:mx-2 transition-colors duration-300 ${
                     currentStep > step.id ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-600'
@@ -437,12 +536,12 @@ export default function SetupPage() {
             上一步
           </button>
 
-          {currentStep < 4 ? (
+          {currentStep < 5 ? (
             <button
               onClick={handleNext}
-              disabled={currentStep === 2 && !selectedTemplate}
+              disabled={(currentStep === 1 && !hasUsableModelConfig(draftModelConfig)) || (currentStep === 3 && !selectedTemplate)}
               className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 rounded-xl transition-all duration-200 text-sm md:text-base ${
-                currentStep === 2 && !selectedTemplate
+                (currentStep === 1 && !hasUsableModelConfig(draftModelConfig)) || (currentStep === 3 && !selectedTemplate)
                   ? 'opacity-50 cursor-not-allowed bg-gray-300'
                   : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:shadow-lg'
               }`}
