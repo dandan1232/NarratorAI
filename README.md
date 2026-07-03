@@ -20,6 +20,110 @@
 - **Cheat 模式** — `cheat on/off` 控制信息展示（回合小结、聊天建议、详细总结）
 - **Debug 模式** — `debug on/off` + 丰富的调试命令
 
+> 当前前端已落地“稳定核心版”：结构化回合、关系结算、记忆写入、角色卡坍缩、本地模型配置。语音/图片/表情包/Debug/Cheat 中和 Hermes Agent、Telegram 投递强绑定的能力，会按前端产品形态逐步迁移。
+
+## CyberPersona 核心机制
+
+NarratorAI 的聊天体验已经迁移为 CyberPersona 风格的“结构化回合 + 状态结算”模型。它本质上仍是聊天页，但每一轮聊天不再只是展示模型文本，而是走完整的角色状态机：
+
+```
+用户消息 → 构造状态 prompt → 模型输出 TurnResult JSON → 校验/兜底 → 显示 visibleText → 结算关系/记忆/角色卡
+```
+
+### 核心原则：量子态
+
+> 没有提及就是无限可能，一旦提及，则立刻限定。
+
+角色不会在创建时被一次性写死。创建时只确定人格轴、关系初值和开场策略，身份、喜好、心事、习惯等信息会在对话中自然出现，并通过结构化回合结果写入角色卡。
+
+- **未提及不固定**：模型不能为了丰满人设而凭空写年龄、职业、故乡、秘密、口头禅。
+- **提及后坍缩**：只有当角色在 `visibleText` 中自然说出信息，才允许同步进入 `characterCardUpdate`。
+- **已知信息保持一致**：已揭示事实会进入后续 prompt，防止角色前后矛盾。
+- **程序层校验**：关系变化只接受枚举值；非法字段会被重置为 neutral，避免模型幻觉直接污染状态。
+
+### 四层状态架构
+
+| 层级 | 名称 | 说明 |
+|------|------|------|
+| L1 | 角色卡层 | 身份、喜好、心事、习惯等量子态字段，随对话坍缩 |
+| L2 | 人格层 | Big Five 和人格原型，决定角色表达方式和关系变化敏感度 |
+| L3 | 关系层 | trust / security / closeness / neediness / possessiveness，0-100 动态积分 |
+| L4 | 记忆层 | revealedFacts、sessionSummaries、emotionalMemories，跨会话保留 |
+
+### 结构化回合输出
+
+模型每轮需要返回 JSON，而不是自由文本。前端只展示 `visibleText`，其余字段用于状态结算。
+
+```json
+{
+  "analysis": "简短分析这句话如何影响关系",
+  "visibleText": "角色真正回复给用户看的文字",
+  "currentEmotion": "happy|sad|angry|surprised|fearful|neutral|loving|excited|anxious|grateful",
+  "stateDelta": {
+    "trust": "neutral",
+    "security": "minor_increase",
+    "closeness": "minor_increase",
+    "neediness": "neutral",
+    "possessiveness": "neutral"
+  },
+  "stressDelta": "neutral",
+  "shortTermUpdate": {
+    "emotionTrigger": "被用户关心",
+    "interactionTrend": "关系升温"
+  },
+  "memoryUpdate": {
+    "revealedFactsAdd": [
+      { "category": "preference", "content": "喜欢雨天窝在家里" }
+    ],
+    "emotionalMemoriesAdd": [
+      { "content": "用户在她疲惫时安慰她", "emotion": "grateful", "intensity": 3 }
+    ],
+    "lastSummary": "用户关心了她的状态"
+  },
+  "characterCardUpdate": {
+    "identity": {},
+    "preferences": { "likes": ["雨天窝在家里"], "dislikes": [] },
+    "innerWorld": [],
+    "habits": []
+  }
+}
+```
+
+### 关系结算
+
+关系变化使用 CyberPersona 的枚举化 delta，避免模型直接输出任意数字：
+
+| 枚举 | 原始分值 | 使用场景 |
+|------|----------|----------|
+| `major_decrease` | -10 | 严重背叛、重大冲突、发现谎言 |
+| `minor_decrease` | -3 | 小失望、轻微误解、冷落 |
+| `neutral` | 0 | 普通闲聊、信息交换、无明显影响 |
+| `minor_increase` | +3 | 关心、记住小事、普通支持 |
+| `major_increase` | +10 | 关键承诺、深层情感支持、重要时刻陪伴 |
+
+实际结算不是简单加减，而是：
+
+```txt
+effective_delta = raw_delta × personality_factor × mood_factor
+```
+
+- **raw_delta**：模型选择的枚举值。
+- **personality_factor**：Big Five 调制，例如高神经质会更容易放大安全感和占有欲变化。
+- **mood_factor**：压力调制，压力高时负面变化更强，正面安慰效果会变弱。
+
+### 本地大模型配置
+
+用户可以在 **设置 → 大模型配置** 中填写自己的模型服务，配置会保存在浏览器本地 `localStorage`，不会写入仓库。
+
+支持两类接口：
+
+| API 格式 | 适用服务 | 调用路径 |
+|----------|----------|----------|
+| MiMo / Messages | MiMo、Anthropic Messages 兼容服务 | `/v1/messages` |
+| OpenAI Compatible | OpenAI、兼容 OpenAI Chat Completions 的服务 | `/v1/chat/completions` |
+
+如果 Base URL 留空，则继续使用项目现有的 Vite 代理或环境变量配置。
+
 <div align="center">
 
 ![欢迎页面](images/welcome.png)
@@ -94,6 +198,21 @@ npm install
 
 ### 2. 配置环境变量
 
+你可以用两种方式配置大模型：
+
+**方式一：浏览器本地配置（推荐给普通用户）**
+
+启动应用后进入 **设置 → 大模型配置**，填写：
+
+- API 格式：`MiMo / Messages` 或 `OpenAI Compatible`
+- Base URL
+- API Key
+- 模型名
+
+配置会保存在当前浏览器本地，不会提交到仓库。
+
+**方式二：开发环境变量**
+
 复制示例文件并填入你的 API Key：
 
 ```bash
@@ -106,7 +225,7 @@ cp .env.example .env
 VITE_MIMO_AUTH_TOKEN=你的MiMo API Key
 ```
 
-> **注意：** `.env` 文件已加入 `.gitignore`，不会被提交到仓库。API Key 仅在 Vite 开发代理中注入请求头，不会暴露到前端代码。
+> **注意：** `.env` 文件已加入 `.gitignore`，不会被提交到仓库。若用户在设置页填写 API Key，则密钥保存在浏览器本地；若使用 `.env`，API Key 通过 Vite 代理或直连配置参与请求。
 
 ### 3. 启动开发服务器
 
@@ -152,7 +271,8 @@ src/
 ├── utils/               # 工具函数
 │   ├── api.ts             # 通用 API
 │   ├── mimo.ts            # MiMo API 客户端
-│   └── characterAnalyzer.ts # 角色分析
+│   ├── characterAnalyzer.ts # 角色、关系、情绪、成就分析
+│   └── turnEngine.ts      # CyberPersona 结构化回合协议与状态结算
 ├── App.tsx
 ├── main.tsx
 └── index.css
@@ -160,9 +280,16 @@ src/
 
 ## API 接口
 
-### MiMo AI API
+### 对话模型 API
 
-通过 Vite 代理调用，避免 CORS 问题。API Key 在服务端代理中注入，前端不直接携带密钥。
+聊天模型支持项目代理、环境变量直连，以及用户在设置页填写的本地配置。
+
+| 格式 | 路径 | 说明 |
+|------|------|------|
+| MiMo / Messages | `/v1/messages` | 默认结构，兼容当前 MiMo 多模态对话 |
+| OpenAI Compatible | `/v1/chat/completions` | 兼容 OpenAI Chat Completions 的服务 |
+
+### MiMo AI API
 
 | 功能 | 代理路径 | 目标路径 | 模型 |
 |------|----------|----------|------|
@@ -181,9 +308,11 @@ src/
 
 1. 首次打开进入 **欢迎页面**，了解功能介绍
 2. 点击"开始旅程"进入 **初始设置**，设定昵称、选择陪伴角色
-3. 进入 **聊天界面**，开始与 AI 伙伴对话
-4. 通过 **伙伴管理** 页面查看所有伙伴的好感度和消息统计
-5. 在 **设置** 中调整昵称、切换主题、管理声音配置
+3. 在 **设置 → 大模型配置** 中填写自己的模型服务，或继续使用项目默认代理
+4. 进入 **聊天界面**，开始与 AI 伙伴对话
+5. 每轮对话会生成结构化 TurnResult，自动结算关系、记忆、角色卡和成就
+6. 通过 **伙伴管理** 页面查看所有伙伴的好感度和消息统计
+7. 在 **设置** 中调整昵称、切换主题、管理声音配置
 
 ## 许可证
 
