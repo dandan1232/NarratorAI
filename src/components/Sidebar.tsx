@@ -40,7 +40,7 @@ export default function Sidebar() {
   const {
     companions, currentCompanion, setCurrentCompanion,
     sessions, setCurrentSession,
-    currentView, setCurrentView,
+    currentView,
     deleteCompanion,
   } = useAppStore();
 
@@ -51,8 +51,7 @@ export default function Sidebar() {
     { icon: Settings, label: '设置', path: '/settings', view: 'settings' as const },
   ];
 
-  const handleNavigate = (path: string, view: typeof currentView) => {
-    setCurrentView(view);
+  const handleNavigate = (path: string) => {
     navigate(path);
     // 移动端点击后自动关闭菜单
     if (isMobile) {
@@ -64,7 +63,7 @@ export default function Sidebar() {
     setCurrentCompanion(companion);
     const session = sessions.find((s) => s.companionId === companion.id);
     setCurrentSession(session || null);
-    handleNavigate('/chat', 'chat');
+    handleNavigate('/chat');
   };
 
   const handleDelete = () => {
@@ -176,7 +175,7 @@ export default function Sidebar() {
             return (
               <button
                 key={item.label}
-                onClick={() => handleNavigate(item.path, item.view)}
+                onClick={() => handleNavigate(item.path)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive
                     ? 'bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/40 dark:to-amber-900/40 text-orange-700 dark:text-orange-300 shadow-sm'
@@ -220,7 +219,7 @@ export default function Sidebar() {
                     )}
                   </h3>
                   <button
-                    onClick={() => handleNavigate('/setup', 'setup')}
+                    onClick={() => handleNavigate('/setup')}
                     className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     title="创建新伙伴"
                   >

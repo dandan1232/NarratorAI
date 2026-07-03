@@ -98,9 +98,9 @@ export default function SettingsPage() {
       alert('请选择图片文件');
       return;
     }
-    // 限制文件大小（200KB）
-    if (file.size > 200 * 1024) {
-      alert('图片大小不能超过 200KB');
+    // 限制文件大小（2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      alert('图片大小不能超过 2MB');
       return;
     }
     const reader = new FileReader();
